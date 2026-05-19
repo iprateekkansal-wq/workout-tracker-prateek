@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Workout" />
+  <meta name="theme-color" content="#000000" />
+  <title>Workout</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg:#000; --card:#1c1c1e; --card2:#2c2c2e; --card3:#3a3a3c;
+      --text:#fff; --text2:#8e8e93; --text3:#636366;
+      --orange:#ff9500; --blue:#0a84ff; --green:#30d158; --red:#ff453a;
+      --purple:#bf5af2; --teal:#64d2ff; --yellow:#ffd60a; --pink:#ff375f;
+      --border:#38383a; --r:14px;
+    }
+    html, body { height:100%; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif; overflow:hidden; -webkit-font-smoothing:antialiased; }
+    #app { height:100dvh; display:flex; flex-direction:column; max-width:460px; margin:0 auto; position:relative; overflow:hidden; }
+
+    .screen { flex:1; overflow-y:auto; overflow-x:hidden; padding-bottom:96px; -webkit-overflow-scrolling:touch; }
+    .screen.no-nav { padding-bottom:24px; }
+    .screen-header { padding:56px 20px 8px; background:var(--bg); position:sticky; top:0; z-index:10; }
+    .screen-header h1 { font-size:32px; font-weight:700; letter-spacing:-0.5px; }
+    .screen-header-nav { padding:52px 16px 8px; background:var(--bg); position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+    .screen-header-nav h2 { flex:1; font-size:17px; font-weight:600; text-align:center; }
+
+    .back-btn { color:var(--blue); font-size:17px; cursor:pointer; background:none; border:none; padding:4px 0; min-width:60px; }
+    .back-btn-right { color:var(--blue); font-size:15px; cursor:pointer; background:none; border:none; padding:4px 0; min-width:60px; text-align:right; }
+    .back-btn-right.danger { color:var(--red); }
+
+    .content { padding:12px 16px 0; }
+    .section-label { font-size:13px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.4px; padding:18px 4px 8px; }
+
+    .card { background:var(--card); border-radius:var(--r); margin-bottom:10px; overflow:hidden; }
+    .card-pad { padding:16px; }
+    .card-tap { cursor:pointer; transition:opacity 0.15s; }
+    .card-tap:active { opacity:0.7; }
+    .row { display:flex; align-items:center; padding:14px 16px; gap:12px; }
+    .row + .row { border-top:1px solid var(--border); }
+    .row-tap { cursor:pointer; }
+    .row-tap:active { background:var(--card2); }
+    .row-label { flex:1; font-size:16px; }
+    .row-detail { color:var(--text2); font-size:14px; }
+    .chevron { color:var(--text3); font-size:19px; line-height:1; }
+
+    .btn { width:100%; padding:16px; font-size:17px; font-weight:600; border:none; border-radius:var(--r); cursor:pointer; letter-spacing:-0.2px; }
+    .btn-primary { background:var(--orange); color:#fff; }
+    .btn-primary:active { opacity:0.85; }
+    .btn-primary:disabled { opacity:0.4; }
+    .btn-secondary { background:var(--card); color:var(--blue); font-weight:500; }
+    .btn-success { background:var(--green); color:#000; }
+    .btn-ghost { background:transparent; color:var(--blue); font-weight:500; }
+    .btn-row { display:flex; gap:10px; }
+    .btn-row .btn { flex:1; }
+
+    .btn-sm { padding:7px 14px; border-radius:8px; font-size:14px; font-weight:500; border:none; cursor:pointer; background:var(--card2); color:var(--text); }
+    .btn-sm-blue { background:rgba(10,132,255,0.15); color:var(--blue); }
+    .btn-sm-orange { background:rgba(255,149,0,0.15); color:var(--orange); }
+    .btn-sm-red { background:rgba(255,69,58,0.15); color:var(--red); }
+
+    /* Hero / streak card */
+    .hero { background:linear-gradient(135deg,#2c2c2e 0%,#1c1c1e 100%); border-radius:18px; padding:18px; margin-bottom:14px; cursor:pointer; position:relative; overflow:hidden; }
+    .hero::after { content:''; position:absolute; right:-30px; top:-30px; width:140px; height:140px; background:radial-gradient(circle,rgba(255,149,0,0.18) 0%,transparent 70%); pointer-events:none; }
+    .hero-row { display:flex; align-items:center; justify-content:space-between; }
+    .hero-streak { display:flex; align-items:baseline; gap:6px; }
+    .hero-streak-num { font-size:44px; font-weight:700; color:var(--orange); letter-spacing:-1px; }
+    .hero-streak-lbl { font-size:14px; color:var(--text2); font-weight:500; }
+    .hero-flame { font-size:34px; line-height:1; }
+    .hero-callout { margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:14px; color:var(--text); }
+    .hero-callout-icon { width:32px; height:32px; border-radius:8px; background:rgba(255,149,0,0.18); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .hero-callout-text { flex:1; }
+    .hero-callout-text strong { color:#fff; }
+    .hero-callout-text small { display:block; color:var(--text2); font-size:12px; margin-top:1px; }
+
+    /* Session block UI */
+    .session-screen { background:var(--bg); }
+    .session-progress { position:sticky; top:0; background:var(--bg); padding:50px 16px 10px; z-index:20; }
+    .session-progress-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; }
+    .session-progress-fill { height:100%; background:var(--orange); transition:width 0.3s ease; }
+    .session-progress-text { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; }
+    .session-progress-text .left { font-weight:600; }
+    .session-progress-text .right { color:var(--text2); }
+
+    .block { background:var(--card); border-radius:18px; margin:0 16px 12px; overflow:hidden; transition:opacity 0.3s; }
+    .block.done { opacity:0.55; }
+    .block.upcoming { opacity:0.45; pointer-events:none; }
+    .block-header { padding:16px 18px 8px; }
+    .block-type { font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; }
+    .block-name { font-size:20px; font-weight:700; letter-spacing:-0.3px; margin-top:2px; }
+    .block-sub { font-size:13px; color:var(--text2); margin-top:2px; }
+    .block-body { padding:8px 18px 16px; }
+    .block-footer { padding:0 18px 16px; }
+
+    /* Set row */
+    .set-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid rgba(255,255,255,0.04); }
+    .set-row:first-child { border-top:none; }
+    .set-num { width:24px; font-size:14px; color:var(--text2); font-weight:600; }
+    .set-input { background:var(--card2); border:none; border-radius:10px; padding:10px 12px; color:var(--text); font-size:16px; font-weight:600; text-align:center; width:78px; -moz-appearance:textfield; }
+    .set-input::-webkit-outer-spin-button, .set-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+    .set-input:focus { outline:2px solid var(--orange); }
+    .set-unit { font-size:12px; color:var(--text2); width:30px; }
+    .set-x { font-size:14px; color:var(--text3); padding:0 4px; }
+    .set-row.logged .set-input { background:rgba(48,209,88,0.1); }
+
+    .add-remove { display:flex; gap:8px; margin-top:10px; }
+    .add-remove button { flex:1; background:transparent; border:1px dashed var(--border); color:var(--text2); padding:8px; border-radius:10px; font-size:13px; cursor:pointer; }
+    .add-remove button:active { background:var(--card2); }
+
+    /* Cardio block */
+    .cardio-input { display:flex; gap:10px; align-items:center; padding:6px 0; }
+    .cardio-field { flex:1; }
+    .cardio-field label { display:block; font-size:11px; color:var(--text2); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.3px; }
+    .cardio-field input { width:100%; background:var(--card2); border:none; border-radius:10px; padding:10px 12px; color:var(--text); font-size:16px; font-weight:600; }
+    .cardio-field input:focus { outline:2px solid var(--orange); }
+
+    /* Skip / done buttons */
+    .block-actions { display:flex; gap:8px; padding:0 18px 16px; }
+    .block-action-btn { flex:1; padding:11px; background:var(--card2); color:var(--text); border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; }
+    .block-action-btn.primary { background:var(--orange); color:#fff; }
+    .block-action-btn.primary:active { opacity:0.85; }
+    .block-action-btn.success { background:var(--green); color:#000; }
+    .block-action-btn:active { opacity:0.85; }
+
+    /* Bottom nav */
+    .bottom-nav { position:fixed; bottom:0; left:0; right:0; max-width:460px; margin:0 auto; background:rgba(20,20,22,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid var(--border); display:flex; padding:8px 8px calc(8px + env(safe-area-inset-bottom)); }
+    .nav-tab { flex:1; background:none; border:none; color:var(--text2); padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; font-size:10px; font-weight:500; }
+    .nav-tab.active { color:var(--orange); }
+    .nav-tab-icon { font-size:22px; line-height:1; }
+
+    /* Heatmap */
+    .heatmap-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .heatmap { display:grid; grid-template-columns:repeat(26,1fr); gap:2px; padding:6px 0; min-width:0; }
+    .heatmap-cell { aspect-ratio:1; background:var(--card2); border-radius:2px; }
+    .heatmap-cell.l1 { background:rgba(255,149,0,0.25); }
+    .heatmap-cell.l2 { background:rgba(255,149,0,0.55); }
+    .heatmap-cell.l3 { background:var(--orange); }
+    .heatmap-legend { display:flex; align-items:center; justify-content:flex-end; gap:6px; font-size:11px; color:var(--text2); padding-top:6px; }
+
+    /* Progression cards */
+    .anchor-card { display:flex; align-items:center; gap:14px; padding:14px 16px; }
+    .anchor-card + .anchor-card { border-top:1px solid var(--border); }
+    .anchor-name { flex:1; font-size:15px; font-weight:600; }
+    .anchor-name small { display:block; font-size:12px; color:var(--text2); font-weight:400; margin-top:2px; }
+    .anchor-weight { font-size:18px; font-weight:700; }
+    .anchor-delta { font-size:12px; font-weight:600; margin-left:8px; padding:2px 6px; border-radius:6px; }
+    .anchor-delta.up { color:var(--green); background:rgba(48,209,88,0.12); }
+    .anchor-delta.down { color:var(--red); background:rgba(255,69,58,0.12); }
+    .anchor-delta.flat { color:var(--text2); background:var(--card2); }
+
+    /* Reports stat grid */
+    .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .stat-card { background:var(--card); border-radius:14px; padding:14px; }
+    .stat-label { font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; font-weight:600; }
+    .stat-value { font-size:28px; font-weight:700; letter-spacing:-0.5px; }
+    .stat-sub { font-size:12px; color:var(--text2); margin-top:2px; }
+
+    /* Library filter chips */
+    .chips { display:flex; gap:6px; overflow-x:auto; padding:8px 0; scrollbar-width:none; }
+    .chips::-webkit-scrollbar { display:none; }
+    .chip { padding:7px 14px; background:var(--card2); border-radius:18px; font-size:13px; font-weight:500; color:var(--text); white-space:nowrap; cursor:pointer; border:none; }
+    .chip.active { background:var(--orange); color:#fff; }
+
+    /* Confetti / celebration */
+    @keyframes pop-in { 0% { transform:scale(0.3); opacity:0; } 60% { transform:scale(1.1); opacity:1; } 100% { transform:scale(1); } }
+    @keyframes float-up { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+    @keyframes confetti-fall { to { transform:translateY(110vh) rotate(720deg); opacity:0; } }
+    .celebrate { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100; padding:30px; }
+    .celebrate-icon { font-size:90px; animation:pop-in 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+    .celebrate-title { font-size:28px; font-weight:700; margin-top:14px; animation:float-up 0.5s 0.2s both; text-align:center; }
+    .celebrate-sub { font-size:15px; color:var(--text2); margin-top:6px; animation:float-up 0.5s 0.3s both; text-align:center; }
+    .celebrate-stats { background:var(--card); border-radius:18px; padding:16px; margin-top:24px; width:100%; max-width:320px; animation:float-up 0.5s 0.4s both; }
+    .celebrate-stat-row { display:flex; justify-content:space-between; padding:6px 0; font-size:14px; }
+    .celebrate-stat-row + .celebrate-stat-row { border-top:1px solid var(--border); }
+    .celebrate-stat-row .lbl { color:var(--text2); }
+    .celebrate-stat-row .val { font-weight:600; }
+    .celebrate-btn { background:var(--orange); color:#fff; border:none; padding:14px 32px; border-radius:14px; font-size:16px; font-weight:600; margin-top:24px; cursor:pointer; animation:float-up 0.5s 0.5s both; }
+    .confetti-piece { position:fixed; top:-20px; width:8px; height:14px; opacity:0.9; animation:confetti-fall 2.5s linear forwards; z-index:101; }
+
+    /* Pulse on save */
+    @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.08); } }
+    .pulse { animation:pulse 0.25s ease; }
+
+    /* Banner */
+    .banner { background:rgba(10,132,255,0.12); border:1px solid rgba(10,132,255,0.3); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); margin-bottom:14px; display:flex; gap:10px; align-items:flex-start; }
+    .banner-icon { font-size:18px; }
+
+    /* Empty state */
+    .empty { text-align:center; padding:60px 20px; color:var(--text2); }
+    .empty-icon { font-size:42px; margin-bottom:10px; opacity:0.5; }
+    .empty-msg { font-size:15px; }
+
+    /* Modal */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:flex-end; z-index:50; }
+    .modal { background:var(--card); border-radius:18px 18px 0 0; width:100%; max-width:460px; margin:0 auto; padding:20px; max-height:80vh; overflow-y:auto; }
+    .modal-title { font-size:20px; font-weight:700; margin-bottom:14px; }
+    .modal-input { width:100%; background:var(--card2); border:none; border-radius:10px; padding:12px; color:var(--text); font-size:16px; margin-bottom:10px; }
+    .modal-input:focus { outline:2px solid var(--orange); }
+
+    /* History row */
+    .history-row { display:flex; gap:12px; padding:14px 16px; cursor:pointer; }
+    .history-row + .history-row { border-top:1px solid var(--border); }
+    .history-row:active { background:var(--card2); }
+    .history-date { width:46px; flex-shrink:0; text-align:center; }
+    .history-date .day { font-size:22px; font-weight:700; color:var(--orange); line-height:1; }
+    .history-date .mo { font-size:11px; color:var(--text2); text-transform:uppercase; margin-top:2px; }
+    .history-info { flex:1; min-width:0; }
+    .history-title { font-size:15px; font-weight:600; }
+    .history-sub { font-size:13px; color:var(--text2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px; margin-left:6px; }
+    .badge-partial { background:rgba(255,149,0,0.18); color:var(--orange); }
+    .badge-complete { background:rgba(48,209,88,0.18); color:var(--green); }
+
+    /* Exercise chart container */
+    .chart-wrap { background:var(--card); border-radius:14px; padding:14px; height:220px; position:relative; }
+
+    /* Builder exercise config row */
+    .builder-ex-row { padding:12px 16px; }
+    .builder-ex-row + .builder-ex-row { border-top:1px solid var(--border); }
+    .builder-ex-name { font-size:15px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+    .builder-ex-controls { display:flex; gap:8px; align-items:center; }
+    .builder-ex-input { background:var(--card2); border:none; border-radius:8px; padding:8px 10px; color:var(--text); font-size:15px; font-weight:600; text-align:center; width:60px; -moz-appearance:textfield; }
+    .builder-ex-input::-webkit-outer-spin-button, .builder-ex-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+    .builder-ex-input:focus { outline:2px solid var(--orange); }
+    .builder-ex-label { font-size:12px; color:var(--text2); }
+
+    /* Misc utilities */
+    .muted { color:var(--text2); }
+    .center { text-align:center; }
+    .mt8 { margin-top:8px; } .mt12 { margin-top:12px; } .mt16 { margin-top:16px; } .mt24 { margin-top:24px; }
+    .mb8 { margin-bottom:8px; } .mb12 { margin-bottom:12px; } .mb16 { margin-bottom:16px; }
+    .flex { display:flex; } .flex-col { flex-direction:column; } .gap8 { gap:8px; } .gap12 { gap:12px; }
+    .grow { flex:1; }
+    .small { font-size:12px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ========= HOME ========= -->
+  <div v-if="screen==='home'" class="screen">
+    <div class="screen-header"><h1>Workout</h1></div>
+    <div class="content">
+
+      <!-- Hero / streak -->
+      <div class="hero card-tap" @click="navigate('reports')">
+        <div class="hero-row">
+          <div class="hero-streak">
+            <span class="hero-streak-num">{{ streak }}</span>
+            <span class="hero-streak-lbl">day streak</span>
+          </div>
+          <div class="hero-flame">{{ streak > 0 ? '🔥' : '💪' }}</div>
+        </div>
+        <div class="hero-callout" v-if="topCallout">
+          <div class="hero-callout-icon">{{ topCallout.icon }}</div>
+          <div class="hero-callout-text">
+            <strong>{{ topCallout.title }}</strong>
+            <small>{{ topCallout.sub }}</small>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+      </div>
+
+      <!-- Resume partial session banner -->
+      <div v-if="partialSession" class="banner">
+        <div class="banner-icon">⏸</div>
+        <div class="grow">
+          <strong>{{ partialSession.name || 'Session' }} in progress</strong><br>
+          <small class="muted">{{ relativeDate(partialSession.date) }} · Continue where you left off</small>
+        </div>
+        <button class="btn-sm btn-sm-blue" @click="resumeSession">Resume</button>
+      </div>
+
+      <!-- Start new session -->
+      <button class="btn btn-primary mb12" @click="navigate('new-session')">+ New Session</button>
+
+      <!-- Last session -->
+      <div v-if="lastSession" class="section-label">Last Session</div>
+      <div v-if="lastSession" class="card card-tap" @click="navigate('session-detail',{id:lastSession.id})">
+        <div class="row">
+          <div class="grow">
+            <div style="font-weight:600;">{{ lastSession.name || 'Session' }}<span v-if="lastSession.isPartial" class="badge badge-partial">Partial</span><span v-else class="badge badge-complete">Done</span></div>
+            <div class="row-detail">{{ relativeDate(lastSession.date) }} · {{ countLoggedExercises(lastSession) }} exercises</div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+      </div>
+
+      <!-- Backup overdue banner -->
+      <div v-if="backupOverdue" class="banner" style="border-color:rgba(255,149,0,0.4); background:rgba(255,149,0,0.08); margin-top:14px;">
+        <div class="banner-icon">💾</div>
+        <div class="grow">
+          <strong>Backup overdue</strong><br>
+          <small class="muted">{{ lastBackupLabel }} — export your data now.</small>
+        </div>
+        <button class="btn-sm btn-sm-orange" @click="exportData">Backup</button>
+      </div>
+
+      <!-- Data section -->
+      <div class="section-label">Data</div>
+      <div class="card">
+        <div class="row row-tap" @click="exportData">
+          <div class="grow">
+            <div style="font-weight:600;">Export Backup</div>
+            <div class="row-detail">{{ lastBackupLabel }}</div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="row row-tap" @click="triggerImport">
+          <div class="grow">
+            <div style="font-weight:600;">Restore from Backup</div>
+            <div class="row-detail">Import a JSON backup file</div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+      </div>
+      <input type="file" ref="importFileInput" accept=".json" style="display:none" @change="importData">
+    </div>
+  </div>
+
+  <!-- ========= NEW SESSION BUILDER ========= -->
+  <div v-if="screen==='new-session'" class="screen no-nav">
+    <div class="screen-header-nav">
+      <button class="back-btn" @click="goBack">‹ Back</button>
+      <h2>New Session</h2>
+      <div style="min-width:60px;"></div>
+    </div>
+    <div class="content">
+
+      <div class="section-label">Session Name</div>
+      <div class="card card-pad">
+        <input type="text" class="modal-input" v-model="newSessionName" placeholder="e.g. Push Day, Chest & Tri…" style="margin-bottom:0;" @keydown.enter="$event.target.blur()">
+      </div>
+
+      <div class="section-label">Exercises <span class="muted" style="font-weight:400; text-transform:none; font-size:12px;">{{ newSessionExercises.length ? newSessionExercises.length + ' added' : '' }}</span></div>
+      <div v-if="!newSessionExercises.length" class="card card-pad center muted small">
+        Add exercises from the list below
+      </div>
+      <div v-else class="card mb12">
+        <div v-for="(ex, i) in newSessionExercises" :key="ex.exercise_key" class="builder-ex-row">
+          <div class="builder-ex-name">
+            {{ exerciseName(ex.exercise_key) }}
+            <button @click="removeBuilderExercise(i)" style="background:none; border:none; color:var(--red); font-size:20px; line-height:1; cursor:pointer; padding:0 0 0 8px;">×</button>
+          </div>
+          <div class="builder-ex-controls">
+            <input type="number" class="builder-ex-input" v-model.number="ex.sets" placeholder="3" min="1" max="10">
+            <span class="builder-ex-label">sets ×</span>
+            <input type="number" class="builder-ex-input" v-model.number="ex.targetReps" placeholder="10" min="1" max="100">
+            <span class="builder-ex-label">reps</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Add Exercises</div>
+      <div class="chips">
+        <button class="chip" :class="{active: builderFilter==='all'}" @click="builderFilter='all'">All</button>
+        <button v-for="g in muscleGroups" :key="g.key" class="chip" :class="{active: builderFilter===g.key}" @click="builderFilter=g.key">{{ g.label }}</button>
+      </div>
+      <div class="card mb16">
+        <div v-for="ex in filteredBuilderLibrary" :key="ex.id" class="row row-tap" @click="toggleBuilderExercise(ex.key)">
+          <div class="grow">
+            <div style="font-weight:500;">{{ ex.name }}</div>
+            <div class="row-detail">{{ groupLabel(ex.group) }}<span v-if="ex.bodyweight"> · bodyweight</span></div>
+          </div>
+          <div v-if="isInBuilder(ex.key)" style="color:var(--green); font-size:18px; font-weight:700; line-height:1;">✓</div>
+          <div v-else style="color:var(--blue); font-size:24px; font-weight:300; line-height:1;">+</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary mb16" @click="startFreeFormSession" :disabled="!newSessionExercises.length">
+        Start Session{{ newSessionExercises.length ? ' · ' + newSessionExercises.length + (newSessionExercises.length === 1 ? ' exercise' : ' exercises') : '' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ========= SESSION (block-based) ========= -->
+  <div v-if="screen==='session' && activeSession" class="screen no-nav session-screen">
+    <div class="session-progress">
+      <div class="session-progress-text">
+        <button class="back-btn" @click="cancelOrPauseSession">‹ Home</button>
+        <span class="left" style="font-size:13px;">{{ activeSession.name || 'Session' }}</span>
+        <div style="min-width:60px;"></div>
+      </div>
+      <div class="session-progress-bar"><div class="session-progress-fill" :style="{width: sessionProgressPct + '%'}"></div></div>
+    </div>
+
+    <div style="padding-top:8px;">
+      <div v-for="(block,bi) in activeSession.blocks" :key="bi" class="block" :class="{done:block.done, upcoming:!block.done && bi !== activeBlockIndex}">
+
+        <!-- EXERCISE -->
+        <template v-if="block.type==='exercise'">
+          <div class="block-header">
+            <div class="block-type">Block {{ bi+1 }}</div>
+            <div class="block-name">{{ exerciseName(block.exercise_key) }}</div>
+            <div class="block-sub">Target: {{ block.sets.length }} × {{ block.targetReps ? block.targetReps + ' reps' : block.targetSeconds ? block.targetSeconds + 's' : '—' }}</div>
+          </div>
+          <div class="block-body">
+            <div v-for="(s,si) in block.sets" :key="si" class="set-row" :class="{logged:s.done}">
+              <div class="set-num">{{ si+1 }}</div>
+              <template v-if="!exerciseIsBodyweight(block.exercise_key)">
+                <input class="set-input" type="number" inputmode="decimal" v-model.number="s.weight" :placeholder="s.prefillWeight || '–'" :disabled="bi !== activeBlockIndex">
+                <span class="set-unit">kg</span>
+                <span class="set-x">×</span>
+              </template>
+              <input class="set-input" type="number" inputmode="numeric" v-model.number="s.reps" :placeholder="block.targetReps || block.targetSeconds || '–'" :disabled="bi !== activeBlockIndex">
+              <span class="set-unit">{{ block.targetSeconds ? 'sec' : 'rep' }}</span>
+            </div>
+            <div v-if="bi === activeBlockIndex" class="add-remove">
+              <button @click="removeSet(bi)" :disabled="block.sets.length <= 1">– Set</button>
+              <button @click="addSet(bi)">+ Set</button>
+            </div>
+          </div>
+          <div class="block-actions">
+            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn" @click="skipBlock(bi)">Skip</button>
+            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
+            <button v-if="block.done" class="block-action-btn success" disabled>✓ Done</button>
+            <button v-if="block.done" class="block-action-btn" @click="editBlock(bi)">Edit</button>
+          </div>
+        </template>
+
+        <!-- CARDIO (treadmill etc.) -->
+        <template v-else-if="block.type==='cardio'">
+          <div class="block-header">
+            <div class="block-type">Block {{ bi+1 }}</div>
+            <div class="block-name">🚶 {{ exerciseName(block.exercise_key) }}</div>
+            <div class="block-sub">{{ block.targetMinutes ? block.targetMinutes + ' min target' : 'Log your session' }}</div>
+          </div>
+          <div class="block-body">
+            <div class="cardio-input">
+              <div class="cardio-field">
+                <label>Minutes</label>
+                <input type="number" v-model.number="block.actualMinutes" :placeholder="block.targetMinutes || '–'">
+              </div>
+              <div class="cardio-field">
+                <label>Speed (km/h)</label>
+                <input type="number" step="0.1" v-model.number="block.speed" placeholder="—">
+              </div>
+            </div>
+          </div>
+          <div class="block-actions">
+            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn" @click="skipBlock(bi)">Skip</button>
+            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
+            <button v-if="block.done" class="block-action-btn success" disabled>✓ Done</button>
+          </div>
+        </template>
+
+      </div>
+
+      <div style="padding:14px 16px 30px;">
+        <button class="btn btn-primary" @click="finishSession" :disabled="!sessionCanFinish">
+          {{ allBlocksDone ? 'Finish Session 🎉' : 'Finish Early' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= HISTORY ========= -->
+  <div v-if="screen==='history'" class="screen">
+    <div class="screen-header"><h1>History</h1></div>
+    <div class="content">
+      <div v-if="!completedSessions.length" class="empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-msg">No sessions yet. Tap + New Session on Home to start.</div>
+      </div>
+      <div v-else class="card">
+        <div v-for="s in sessionsByDate" :key="s.id" class="history-row" @click="navigate('session-detail',{id:s.id})">
+          <div class="history-date">
+            <div class="day">{{ dayOf(s.date) }}</div>
+            <div class="mo">{{ monthOf(s.date) }}</div>
+          </div>
+          <div class="history-info">
+            <div class="history-title">{{ s.name || 'Session' }}<span v-if="s.isPartial" class="badge badge-partial">Partial</span></div>
+            <div class="history-sub">{{ historyExerciseSummary(s) }}</div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= SESSION DETAIL ========= -->
+  <div v-if="screen==='session-detail'" class="screen">
+    <div class="screen-header-nav">
+      <button class="back-btn" @click="goBack">‹ Back</button>
+      <h2>{{ detailSession ? (detailSession.name || 'Session') : '' }}</h2>
+      <button class="back-btn-right danger" @click="deleteDetailSession">Delete</button>
+    </div>
+    <div v-if="detailSession" class="content">
+      <div class="section-label">{{ relativeDate(detailSession.date) }}</div>
+      <div v-for="(block,bi) in detailSession.blocks" :key="bi" class="card">
+        <template v-if="block.type==='exercise'">
+          <div class="row">
+            <div class="grow">
+              <div style="font-weight:600;">{{ exerciseName(block.exercise_key) }}</div>
+              <div class="row-detail">{{ block.sets.filter(s=>s.done).length }} sets logged</div>
+            </div>
+          </div>
+          <div v-for="(s,si) in block.sets" :key="si" class="row">
+            <div class="row-label">Set {{ si+1 }}</div>
+            <div class="row-detail">
+              <span v-if="s.weight != null">{{ s.weight }}kg × </span>{{ s.reps }} {{ block.targetSeconds ? 'sec' : 'reps' }}
+              <span v-if="!s.done" class="muted"> · skipped</span>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="block.type==='cardio'">
+          <div class="row">
+            <div class="grow">
+              <div style="font-weight:600;">🚶 {{ exerciseName(block.exercise_key) }}</div>
+              <div class="row-detail">{{ block.actualMinutes || '—' }} min{{ block.speed ? ' · ' + block.speed + ' km/h' : '' }}<span v-if="!block.done" class="muted"> · skipped</span></div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= REPORTS ========= -->
+  <div v-if="screen==='reports'" class="screen">
+    <div class="screen-header"><h1>Reports</h1></div>
+    <div class="content">
+
+      <div class="stat-grid mb12">
+        <div class="stat-card">
+          <div class="stat-label">Streak</div>
+          <div class="stat-value" style="color:var(--orange);">{{ streak }}</div>
+          <div class="stat-sub">{{ streak === 1 ? 'day' : 'days' }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">This Week</div>
+          <div class="stat-value">{{ weekStats.completed }}</div>
+          <div class="stat-sub">sessions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">This Month</div>
+          <div class="stat-value">{{ monthStats.completed }}</div>
+          <div class="stat-sub">sessions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total</div>
+          <div class="stat-value">{{ completedSessions.length }}</div>
+          <div class="stat-sub">all-time</div>
+        </div>
+      </div>
+
+      <div class="section-label">Activity</div>
+      <div class="card card-pad">
+        <div style="font-size:13px; color:var(--text2); margin-bottom:8px;">{{ heatmapTotal }} sessions · last 6 months</div>
+        <div class="heatmap-scroll">
+          <div class="heatmap">
+            <div v-for="(cell,i) in heatmap" :key="i" class="heatmap-cell" :class="'l' + cell.level"></div>
+          </div>
+        </div>
+        <div class="heatmap-legend">
+          Less
+          <div class="heatmap-cell" style="width:10px; height:10px;"></div>
+          <div class="heatmap-cell l1" style="width:10px; height:10px;"></div>
+          <div class="heatmap-cell l2" style="width:10px; height:10px;"></div>
+          <div class="heatmap-cell l3" style="width:10px; height:10px;"></div>
+          More
+        </div>
+      </div>
+
+      <div class="section-label">Progression · Tracked Exercises</div>
+      <div v-if="!exerciseProgression.length" class="card card-pad muted small">Complete a few sessions to see strength trends.</div>
+      <div v-else class="card">
+        <div v-for="ep in exerciseProgression" :key="ep.key" class="anchor-card card-tap" @click="navigate('exercise-detail',{key:ep.key})">
+          <div class="anchor-name">{{ ep.name }}<small>{{ ep.sessions }} sessions logged</small></div>
+          <div style="text-align:right;">
+            <div class="anchor-weight">{{ ep.current }}{{ ep.unit }}</div>
+            <span class="anchor-delta" :class="ep.deltaClass">{{ ep.deltaStr }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Muscle Group Coverage (Last 7 Days)</div>
+      <div class="card">
+        <div v-for="g in muscleGroupCoverage" :key="g.key" class="row">
+          <div class="row-label">{{ g.label }}</div>
+          <div class="row-detail">
+            <span :style="{color: g.sets >= g.target ? 'var(--green)' : g.sets > 0 ? 'var(--orange)' : 'var(--text2)'}">{{ g.sets }} sets</span>
+            <span class="muted"> / {{ g.target }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Data & Backup</div>
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <div style="font-weight:600;">Backup Data</div>
+            <div class="row-detail">{{ lastBackupLabel }}</div>
+          </div>
+          <button class="btn-sm btn-sm-blue" @click="exportData">Export JSON</button>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <div style="font-weight:600;">Restore from Backup</div>
+            <div class="row-detail">Import a previously exported JSON</div>
+          </div>
+          <button class="btn-sm btn-sm-orange" @click="triggerImport">Import JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= EXERCISE DETAIL (progression) ========= -->
+  <div v-if="screen==='exercise-detail'" class="screen">
+    <div class="screen-header-nav">
+      <button class="back-btn" @click="goBack">‹ Back</button>
+      <h2>{{ detailExercise ? detailExercise.name : '' }}</h2>
+      <div style="min-width:60px;"></div>
+    </div>
+    <div v-if="detailExercise" class="content">
+      <div class="section-label">Top Set · {{ detailExercise.group }}</div>
+      <div class="chart-wrap">
+        <canvas ref="exerciseChart"></canvas>
+      </div>
+      <div class="section-label">Recent Sessions</div>
+      <div v-if="!exerciseRecentSessions.length" class="card card-pad muted small">No history yet.</div>
+      <div v-else class="card">
+        <div v-for="r in exerciseRecentSessions" :key="r.sessionId" class="row">
+          <div class="grow">
+            <div style="font-weight:600;">{{ relativeDate(r.date) }}</div>
+            <div class="row-detail">{{ r.setsSummary }}</div>
+          </div>
+          <div v-if="r.flagged" style="color:var(--yellow); font-size:11px;" title="Reps below target">⚠</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= LIBRARY ========= -->
+  <div v-if="screen==='library'" class="screen">
+    <div class="screen-header"><h1>Exercises</h1></div>
+    <div class="content">
+      <div class="chips">
+        <button class="chip" :class="{active: libFilter==='all'}" @click="libFilter='all'">All</button>
+        <button v-for="g in muscleGroups" :key="g.key" class="chip" :class="{active: libFilter===g.key}" @click="libFilter=g.key">{{ g.label }}</button>
+      </div>
+      <div class="card">
+        <div v-for="ex in filteredLibrary" :key="ex.id" class="row row-tap" @click="navigate('exercise-detail',{key:ex.key})">
+          <div class="grow">
+            <div style="font-weight:500;">{{ ex.name }}</div>
+            <div class="row-detail">{{ groupLabel(ex.group) }}<span v-if="ex.bodyweight"> · bodyweight</span><span v-if="ex.type==='cardio'"> · cardio</span><span v-if="ex.timeBased"> · time-based</span></div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= CELEBRATION OVERLAY ========= -->
+  <div v-if="showCelebration" class="celebrate" @click="dismissCelebration">
+    <div v-for="n in 24" :key="n" class="confetti-piece" :style="confettiStyle(n)"></div>
+    <div class="celebrate-icon">{{ celebrationData.icon }}</div>
+    <div class="celebrate-title">{{ celebrationData.title }}</div>
+    <div class="celebrate-sub">{{ celebrationData.sub }}</div>
+    <div class="celebrate-stats">
+      <div class="celebrate-stat-row"><span class="lbl">Session</span><span class="val">{{ celebrationData.sessionName }}</span></div>
+      <div class="celebrate-stat-row"><span class="lbl">Exercises completed</span><span class="val">{{ celebrationData.exDone }}/{{ celebrationData.exTotal }}</span></div>
+      <div class="celebrate-stat-row"><span class="lbl">Total sets</span><span class="val">{{ celebrationData.totalSets }}</span></div>
+      <div v-if="celebrationData.totalVolume" class="celebrate-stat-row"><span class="lbl">Total volume</span><span class="val">{{ celebrationData.totalVolume }} kg</span></div>
+      <div class="celebrate-stat-row"><span class="lbl">Streak</span><span class="val">🔥 {{ streak }} days</span></div>
+    </div>
+    <button class="celebrate-btn" @click="dismissCelebration">Done</button>
+  </div>
+
+  <!-- ========= BOTTOM NAV ========= -->
+  <nav v-if="['home','history','reports','library'].includes(screen)" class="bottom-nav">
+    <button class="nav-tab" :class="{active: screen==='home'}" @click="navigate('home')">
+      <div class="nav-tab-icon">🏠</div>Home
+    </button>
+    <button class="nav-tab" :class="{active: screen==='history'}" @click="navigate('history')">
+      <div class="nav-tab-icon">📋</div>History
+    </button>
+    <button class="nav-tab" :class="{active: screen==='reports' || screen==='exercise-detail'}" @click="navigate('reports')">
+      <div class="nav-tab-icon">📊</div>Reports
+    </button>
+    <button class="nav-tab" :class="{active: screen==='library'}" @click="navigate('library')">
+      <div class="nav-tab-icon">📚</div>Library
+    </button>
+  </nav>
+
+</div>
+
+<script>
+const { createApp, ref, computed, reactive, watch, onMounted, nextTick } = Vue;
+
+/* ========================================================================== */
+/*  EXERCISE LIBRARY                                                          */
+/* ========================================================================== */
+const SEED_EXERCISES = [
+  // Chest
+  { key:'db_chest_press', name:'DB Chest Press', group:'chest' },
+  { key:'incline_db_press', name:'Incline Dumbbell Press', group:'chest' },
+  { key:'db_chest_flyes', name:'Dumbbell Chest Flyes', group:'chest' },
+  { key:'barbell_bench_press', name:'Barbell Bench Press', group:'chest' },
+  // Back
+  { key:'lat_pulldown', name:'Lat Pulldown', group:'back' },
+  { key:'machine_row', name:'Machine Row', group:'back' },
+  { key:'one_hand_row', name:'One Hand Row', group:'back' },
+  { key:'cable_rows', name:'Seated Cable Row', group:'back' },
+  { key:'back_extension', name:'Back Extension', group:'back' },
+  { key:'bent_over_row', name:'Bent Over Barbell Row', group:'back' },
+  { key:'pull_ups', name:'Pull-ups', group:'back', bodyweight:true },
+  // Shoulders
+  { key:'db_shoulder_press', name:'DB Shoulder Press', group:'shoulders' },
+  { key:'lateral_raise', name:'Lateral Raise', group:'shoulders' },
+  { key:'face_pulls', name:'Face Pulls', group:'shoulders' },
+  { key:'shrugs', name:'Shrugs', group:'shoulders' },
+  { key:'front_raise', name:'Front Raise', group:'shoulders' },
+  // Biceps
+  { key:'preacher_curls', name:'Preacher Curls', group:'biceps' },
+  { key:'db_curls', name:'Dumbbell Curls', group:'biceps' },
+  { key:'barbell_curls', name:'Barbell Curls', group:'biceps' },
+  { key:'hammer_curls', name:'Hammer Curls', group:'biceps' },
+  // Triceps
+  { key:'triceps_pushdown', name:'Triceps Pushdown', group:'triceps' },
+  { key:'overhead_triceps', name:'Overhead Triceps Extension', group:'triceps' },
+  { key:'skull_crushers', name:'Skull Crushers', group:'triceps' },
+  { key:'dips', name:'Dips', group:'triceps', bodyweight:true },
+  // Legs / glutes
+  { key:'barbell_squat', name:'Barbell Squat', group:'legs' },
+  { key:'goblet_squat', name:'Goblet Squat', group:'legs' },
+  { key:'sumo_squat', name:'Sumo Squat', group:'legs' },
+  { key:'walking_lunges', name:'Walking Lunges', group:'legs' },
+  { key:'bulgarian_split_squat', name:'Bulgarian Split Squat', group:'legs' },
+  { key:'leg_press', name:'Leg Press', group:'legs' },
+  { key:'leg_extensions', name:'Leg Extensions', group:'legs' },
+  { key:'ham_curls', name:'Ham Curls', group:'legs' },
+  { key:'rdl', name:'Romanian Deadlift', group:'legs' },
+  { key:'deadlift', name:'Deadlift', group:'legs' },
+  { key:'hip_thrust', name:'Hip Thrust', group:'glutes' },
+  { key:'calf_raise', name:'Calf Raise', group:'legs' },
+  // Core
+  { key:'plank', name:'Plank', group:'core', bodyweight:true, timeBased:true },
+  { key:'side_plank', name:'Side Plank', group:'core', bodyweight:true, timeBased:true },
+  { key:'hollow_hold', name:'Hollow Hold', group:'core', bodyweight:true, timeBased:true },
+  { key:'dead_bugs', name:'Dead Bugs', group:'core', bodyweight:true },
+  { key:'bicycle_crunches', name:'Bicycle Crunches', group:'core', bodyweight:true },
+  { key:'ab_crunches', name:'Ab Crunches', group:'core', bodyweight:true },
+  { key:'leg_raises', name:'Leg Raises', group:'core', bodyweight:true },
+  { key:'russian_twists', name:'Russian Twists', group:'core', bodyweight:true },
+  { key:'cable_crunches', name:'Cable Crunches', group:'core' },
+  // Cardio
+  { key:'treadmill', name:'Treadmill', group:'cardio', type:'cardio' },
+  { key:'cycling', name:'Cycling / Bike', group:'cardio', type:'cardio' },
+  { key:'rowing', name:'Rowing Machine', group:'cardio', type:'cardio' }
+];
+SEED_EXERCISES.forEach(e => e.id = e.key);
+
+const MUSCLE_GROUPS = [
+  { key:'chest', label:'Chest' },
+  { key:'back', label:'Back' },
+  { key:'shoulders', label:'Shoulders' },
+  { key:'biceps', label:'Biceps' },
+  { key:'triceps', label:'Triceps' },
+  { key:'legs', label:'Legs' },
+  { key:'glutes', label:'Glutes' },
+  { key:'core', label:'Core' },
+  { key:'cardio', label:'Cardio' }
+];
+
+/* ========================================================================== */
+/*  STORAGE                                                                   */
+/* ========================================================================== */
+const LS = {
+  exercises: 'wtp_exercises',
+  sessions:  'wtp_sessions',
+  lastBackup: 'wtp_last_backup'
+};
+const load = (k, def) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } };
+const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+const uuid = () => 'x' + Math.random().toString(36).slice(2,11) + Date.now().toString(36);
+const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayStr = () => localDateStr(new Date());
+
+/* ========================================================================== */
+/*  APP                                                                       */
+/* ========================================================================== */
+createApp({
+  setup() {
+    /* ---------- STATE ---------- */
+    const screen = ref('home');
+    const screenHistory = ref([]);
+    const screenParams = ref({});
+
+    const exercises = ref(load(LS.exercises, []));
+    if (!exercises.value.length) { exercises.value = JSON.parse(JSON.stringify(SEED_EXERCISES)); save(LS.exercises, exercises.value); }
+    const existingKeys = new Set(exercises.value.map(e => e.key));
+    let added = false;
+    SEED_EXERCISES.forEach(s => { if (!existingKeys.has(s.key)) { exercises.value.push({...s}); added = true; } });
+    if (added) save(LS.exercises, exercises.value);
+
+    const sessions = ref(load(LS.sessions, []));
+    const lastBackupDate = ref(load(LS.lastBackup, null));
+
+    const activeSession = ref(null);
+    const activeBlockIndex = ref(0);
+    const partialSession = ref(null);
+
+    /* Session builder state */
+    const newSessionName = ref('');
+    const newSessionExercises = ref([]);
+    const builderFilter = ref('all');
+
+    /* Library */
+    const libFilter = ref('all');
+
+    /* Celebration */
+    const showCelebration = ref(false);
+    const celebrationData = ref({});
+
+    /* ---------- INIT ---------- */
+    onMounted(() => {
+      const partial = sessions.value.find(s => s.isPartial && !s.completed_at && s.inProgress);
+      if (partial) partialSession.value = partial;
+    });
+
+    /* ---------- COMPUTED: SESSIONS ---------- */
+    const completedSessions = computed(() => sessions.value.filter(s => !s.inProgress));
+
+    const sessionsByDate = computed(() =>
+      [...completedSessions.value].sort((a,b) => (b.date+(b.created_at||'')).localeCompare(a.date+(a.created_at||'')))
+    );
+
+    /* ---------- COMPUTED: STREAK ---------- */
+    const streak = computed(() => {
+      if (!completedSessions.value.length) return 0;
+      const dates = new Set(completedSessions.value.map(s => s.date));
+      if (!dates.size) return 0;
+      const sorted = [...dates].sort().reverse();
+      let count = 0;
+      let lastDate = null;
+      for (const ds of sorted) {
+        const dt = new Date(ds);
+        if (lastDate === null) {
+          const gap = Math.floor((Date.now() - dt.getTime()) / 86400000);
+          if (gap > 2) break;
+          count = 1;
+          lastDate = dt;
+        } else {
+          const gap = Math.floor((lastDate.getTime() - dt.getTime()) / 86400000);
+          if (gap > 3) break;
+          count++;
+          lastDate = dt;
+        }
+      }
+      return count;
+    });
+
+    /* ---------- COMPUTED: LAST SESSION ---------- */
+    const lastSession = computed(() => sessionsByDate.value[0] || null);
+
+    /* ---------- COMPUTED: STATS ---------- */
+    const weekStats = computed(() => {
+      const now = new Date();
+      const day = now.getDay() || 7;
+      const monday = new Date(now); monday.setDate(now.getDate() - (day - 1)); monday.setHours(0,0,0,0);
+      return { completed: completedSessions.value.filter(s => new Date(s.date) >= monday).length };
+    });
+    const monthStats = computed(() => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { completed: completedSessions.value.filter(s => new Date(s.date) >= monthStart).length };
+    });
+
+    /* ---------- COMPUTED: HEATMAP ---------- */
+    const heatmap = computed(() => {
+      const cells = [];
+      const now = new Date(); now.setHours(0,0,0,0);
+      const dayCount = 182;
+      const sessionsByDay = {};
+      completedSessions.value.forEach(s => {
+        sessionsByDay[s.date] = (sessionsByDay[s.date] || 0) + 1;
+      });
+      const start = new Date(now); start.setDate(now.getDate() - dayCount + 1);
+      for (let i = 0; i < dayCount; i++) {
+        const d = new Date(start); d.setDate(start.getDate() + i);
+        const ds = localDateStr(d);
+        const c = sessionsByDay[ds] || 0;
+        cells.push({ date: ds, level: c >= 2 ? 3 : c === 1 ? 2 : 0 });
+      }
+      return cells;
+    });
+    const heatmapTotal = computed(() => completedSessions.value.length);
+
+    /* ---------- COMPUTED: EXERCISE PROGRESSION ---------- */
+    const exerciseProgression = computed(() => {
+      const exMap = {};
+      completedSessions.value.forEach(s => {
+        s.blocks.forEach(b => {
+          if (b.type !== 'exercise' || !b.exercise_key) return;
+          const firstDone = b.sets && b.sets.find(x => x.done);
+          if (!firstDone) return;
+          if (!exMap[b.exercise_key]) exMap[b.exercise_key] = [];
+          exMap[b.exercise_key].push({ date: s.date, weight: firstDone.weight, reps: firstDone.reps });
+        });
+      });
+      const results = [];
+      for (const [key, dataPoints] of Object.entries(exMap)) {
+        if (dataPoints.length < 2) continue;
+        const ex = exercises.value.find(e => e.key === key);
+        if (!ex) continue;
+        dataPoints.sort((a,b) => a.date.localeCompare(b.date));
+        const first = dataPoints[0];
+        const latest = dataPoints[dataPoints.length - 1];
+        const unit = ex.timeBased ? 's' : (ex.bodyweight ? ' reps' : 'kg');
+        const currentVal = ex.timeBased ? latest.reps : (ex.bodyweight ? latest.reps : latest.weight);
+        const firstVal = ex.timeBased ? first.reps : (ex.bodyweight ? first.reps : first.weight);
+        let deltaStr, deltaClass;
+        if (currentVal > firstVal) { deltaStr = '+' + (currentVal - firstVal) + unit.trim(); deltaClass = 'up'; }
+        else if (currentVal < firstVal) { deltaStr = (currentVal - firstVal) + unit.trim(); deltaClass = 'down'; }
+        else { deltaStr = '±0'; deltaClass = 'flat'; }
+        results.push({ key, name: ex.name, sessions: dataPoints.length, current: currentVal, unit, deltaStr, deltaClass });
+      }
+      return results.sort((a,b) => b.sessions - a.sessions).slice(0, 12);
+    });
+
+    /* ---------- COMPUTED: TOP CALLOUT ---------- */
+    const topCallout = computed(() => {
+      for (const ep of exerciseProgression.value) {
+        if (ep.deltaClass === 'up' && ep.sessions >= 2) {
+          return { icon:'🏆', title:'New PR · ' + ep.name, sub:'Now ' + ep.current + ep.unit + ' (' + ep.deltaStr + ')' };
+        }
+      }
+      if (weekStats.value.completed >= 4) {
+        return { icon:'💎', title:'Crushing this week', sub:weekStats.value.completed + ' sessions this week' };
+      }
+      if (completedSessions.value.length > 0 && completedSessions.value.length < 5) {
+        return { icon:'🌱', title:'Building the habit', sub:completedSessions.value.length + ' session' + (completedSessions.value.length>1?'s':'') + ' logged. Keep going.' };
+      }
+      if (completedSessions.value.length === 0) {
+        return { icon:'✨', title:'Welcome', sub:'Tap + New Session to start logging.' };
+      }
+      return { icon:'📊', title:'View progress', sub:'Tap to see strength trends + heatmap' };
+    });
+
+    /* ---------- COMPUTED: MUSCLE GROUP COVERAGE ---------- */
+    const muscleGroupCoverage = computed(() => {
+      const targets = { chest:9, back:12, shoulders:12, biceps:6, triceps:3, legs:14, glutes:17, core:9 };
+      const result = {};
+      Object.keys(targets).forEach(k => result[k] = 0);
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+      completedSessions.value.filter(s => new Date(s.date) >= cutoff).forEach(s => {
+        s.blocks.forEach(b => {
+          if (b.type !== 'exercise' || !b.exercise_key) return;
+          const ex = exercises.value.find(e => e.key === b.exercise_key);
+          if (!ex || !targets[ex.group]) return;
+          result[ex.group] += b.sets.filter(x => x.done).length;
+        });
+      });
+      return Object.keys(targets).map(k => ({
+        key:k, label:groupLabel(k), sets:result[k], target:targets[k]
+      }));
+    });
+
+    /* ---------- COMPUTED: SESSION PROGRESS ---------- */
+    const sessionProgressPct = computed(() => {
+      if (!activeSession.value) return 0;
+      const total = activeSession.value.blocks.length;
+      const done = activeSession.value.blocks.filter(b => b.done).length;
+      return Math.round((done / total) * 100);
+    });
+    const allBlocksDone = computed(() => activeSession.value && activeSession.value.blocks.every(b => b.done));
+    const sessionCanFinish = computed(() => activeSession.value && activeSession.value.blocks.some(b => b.done));
+
+    /* ---------- COMPUTED: DETAILS ---------- */
+    const detailSession = computed(() => {
+      if (screen.value !== 'session-detail' || !screenParams.value.id) return null;
+      return sessions.value.find(s => s.id === screenParams.value.id);
+    });
+    const detailExercise = computed(() => {
+      if (!screenParams.value.key) return null;
+      const ex = exercises.value.find(e => e.key === screenParams.value.key);
+      if (!ex) return null;
+      return { ...ex, group: groupLabel(ex.group) };
+    });
+    const exerciseRecentSessions = computed(() => {
+      if (!detailExercise.value) return [];
+      const key = detailExercise.value.key;
+      const result = [];
+      [...completedSessions.value].sort((a,b) => b.date.localeCompare(a.date)).forEach(s => {
+        s.blocks.forEach(b => {
+          if (b.type === 'exercise' && b.exercise_key === key) {
+            const logged = b.sets.filter(x => x.done);
+            if (!logged.length) return;
+            const summary = logged.map(x => {
+              const unit = b.targetSeconds ? 's' : '';
+              return (x.weight != null ? x.weight + 'kg×' : '') + x.reps + unit;
+            }).join(' · ');
+            const target = b.targetReps || b.targetSeconds;
+            const flagged = b.sets[0] && b.sets[0].done && target && b.sets[0].reps < target;
+            result.push({ sessionId: s.id, date: s.date, setsSummary: summary, flagged });
+          }
+        });
+      });
+      return result.slice(0, 15);
+    });
+
+    /* ---------- FILTERED LIBRARY ---------- */
+    const filteredLibrary = computed(() => {
+      const list = libFilter.value === 'all' ? exercises.value : exercises.value.filter(e => e.group === libFilter.value);
+      return [...list].sort((a,b) => a.name.localeCompare(b.name));
+    });
+
+    const filteredBuilderLibrary = computed(() => {
+      const list = builderFilter.value === 'all'
+        ? exercises.value.filter(e => e.type !== 'cardio')
+        : exercises.value.filter(e => e.group === builderFilter.value);
+      return [...list].sort((a,b) => a.name.localeCompare(b.name));
+    });
+
+    /* ---------- HELPERS ---------- */
+    function exerciseName(key) {
+      const e = exercises.value.find(x => x.key === key);
+      return e ? e.name : key;
+    }
+    function exerciseIsBodyweight(key) {
+      const e = exercises.value.find(x => x.key === key);
+      return e && e.bodyweight;
+    }
+    function groupLabel(k) { const g = MUSCLE_GROUPS.find(m => m.key === k); return g ? g.label : k; }
+    function relativeDate(dateStr) {
+      const d = new Date(dateStr); d.setHours(0,0,0,0);
+      const t = new Date(); t.setHours(0,0,0,0);
+      const diff = Math.round((t - d) / 86400000);
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Yesterday';
+      if (diff < 7) return diff + ' days ago';
+      return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+    }
+    function dayOf(ds) { return new Date(ds).getDate(); }
+    function monthOf(ds) { return new Date(ds).toLocaleDateString('en-US', { month:'short' }); }
+    function countLoggedExercises(s) {
+      return s.blocks.filter(b => b.type === 'exercise' && b.sets && b.sets.some(x => x.done)).length;
+    }
+    function historyExerciseSummary(s) {
+      const exNames = s.blocks.filter(b => b.type === 'exercise' && b.sets.some(x => x.done)).map(b => exerciseName(b.exercise_key));
+      return exNames.length ? exNames.slice(0, 3).join(', ') + (exNames.length > 3 ? '…' : '') : '—';
+    }
+    function getPrefillWeight(exKey) {
+      const sorted = [...completedSessions.value].sort((a,b) => b.date.localeCompare(a.date));
+      for (const s of sorted) {
+        for (const b of s.blocks) {
+          if (b.type === 'exercise' && b.exercise_key === exKey) {
+            const lastDone = b.sets.filter(x => x.done && x.weight != null);
+            if (lastDone.length) return lastDone[lastDone.length - 1].weight;
+          }
+        }
+      }
+      return null;
+    }
+
+    /* ---------- SESSION BUILDER ---------- */
+    function toggleBuilderExercise(key) {
+      const idx = newSessionExercises.value.findIndex(e => e.exercise_key === key);
+      if (idx !== -1) {
+        newSessionExercises.value.splice(idx, 1);
+      } else {
+        newSessionExercises.value.push({ exercise_key: key, sets: 3, targetReps: 10 });
+      }
+    }
+    function removeBuilderExercise(i) {
+      newSessionExercises.value.splice(i, 1);
+    }
+    function isInBuilder(key) {
+      return newSessionExercises.value.some(e => e.exercise_key === key);
+    }
+
+    /* ---------- SESSION START ---------- */
+    function buildFreeFormSession() {
+      const blocks = newSessionExercises.value.map(ex => {
+        const prefill = getPrefillWeight(ex.exercise_key);
+        const exDef = exercises.value.find(e => e.key === ex.exercise_key);
+        const isCardio = exDef && exDef.type === 'cardio';
+        if (isCardio) {
+          return { type:'cardio', exercise_key: ex.exercise_key, targetMinutes: ex.targetReps || null, done:false };
+        }
+        return {
+          type: 'exercise',
+          exercise_key: ex.exercise_key,
+          sets: Array.from({ length: ex.sets || 3 }, () => ({
+            weight: prefill,
+            prefillWeight: prefill,
+            reps: null,
+            done: false
+          })),
+          targetReps: ex.targetReps || 10,
+          done: false
+        };
+      });
+      return {
+        id: uuid(),
+        date: todayStr(),
+        created_at: new Date().toISOString(),
+        completed_at: null,
+        isPartial: false,
+        inProgress: true,
+        name: newSessionName.value.trim() || 'Workout',
+        blocks
+      };
+    }
+
+    function startFreeFormSession() {
+      if (!newSessionExercises.value.length) return;
+      activeSession.value = buildFreeFormSession();
+      activeBlockIndex.value = 0;
+      sessions.value.push(activeSession.value);
+      save(LS.sessions, sessions.value);
+      partialSession.value = null;
+      newSessionName.value = '';
+      newSessionExercises.value = [];
+      builderFilter.value = 'all';
+      screen.value = 'session';
+    }
+
+    function resumeSession() {
+      activeSession.value = partialSession.value;
+      const idx = activeSession.value.blocks.findIndex(b => !b.done);
+      activeBlockIndex.value = idx === -1 ? 0 : idx;
+      screen.value = 'session';
+    }
+
+    /* ---------- SET LOGGING ---------- */
+    function addSet(bi) {
+      const block = activeSession.value.blocks[bi];
+      const prefill = block.sets[0] ? block.sets[0].weight : getPrefillWeight(block.exercise_key);
+      block.sets.push({ weight: prefill, prefillWeight: prefill, reps: null, done: false });
+      persistSession();
+    }
+    function removeSet(bi) {
+      const block = activeSession.value.blocks[bi];
+      if (block.sets.length > 1) block.sets.pop();
+      persistSession();
+    }
+
+    /* ---------- BLOCK ACTIONS ---------- */
+    function markBlockDone(bi) {
+      const block = activeSession.value.blocks[bi];
+      if (block.type === 'exercise') {
+        block.sets.forEach(set => {
+          if (set.reps == null || set.reps === '') set.reps = block.targetReps || block.targetSeconds;
+          if (!exerciseIsBodyweight(block.exercise_key) && (set.weight == null || set.weight === '')) set.weight = set.prefillWeight;
+          set.done = true;
+        });
+      }
+      block.done = true;
+      const next = activeSession.value.blocks.findIndex((b, i) => i > bi && !b.done);
+      if (next !== -1) activeBlockIndex.value = next;
+      persistSession();
+    }
+    function editBlock(bi) {
+      const block = activeSession.value.blocks[bi];
+      block.done = false;
+      block.skipped = false;
+      activeBlockIndex.value = bi;
+      persistSession();
+    }
+    function skipBlock(bi) {
+      const block = activeSession.value.blocks[bi];
+      block.done = true;
+      block.skipped = true;
+      const next = activeSession.value.blocks.findIndex((b, i) => i > bi && !b.done);
+      if (next !== -1) activeBlockIndex.value = next;
+      persistSession();
+    }
+
+    function persistSession() {
+      if (!activeSession.value) return;
+      const i = sessions.value.findIndex(s => s.id === activeSession.value.id);
+      if (i !== -1) sessions.value[i] = activeSession.value;
+      else sessions.value.push(activeSession.value);
+      save(LS.sessions, sessions.value);
+    }
+
+    function cancelOrPauseSession() {
+      if (!activeSession.value) return;
+      const anyLogged = activeSession.value.blocks.some(b => b.done);
+      if (!anyLogged) {
+        sessions.value = sessions.value.filter(s => s.id !== activeSession.value.id);
+        save(LS.sessions, sessions.value);
+        activeSession.value = null;
+        screen.value = 'home';
+        return;
+      }
+      activeSession.value.isPartial = true;
+      activeSession.value.inProgress = true;
+      persistSession();
+      partialSession.value = activeSession.value;
+      activeSession.value = null;
+      screen.value = 'home';
+    }
+
+    function finishSession() {
+      const s = activeSession.value;
+      s.completed_at = new Date().toISOString();
+      s.inProgress = false;
+      const exBlocks = s.blocks.filter(b => b.type === 'exercise');
+      const allExLogged = exBlocks.every(b => b.sets.some(x => x.done));
+      const allBlocksMarked = s.blocks.every(b => b.done);
+      s.isPartial = !(allExLogged && allBlocksMarked);
+      persistSession();
+
+      const totalSets = s.blocks.reduce((sum, b) => sum + (b.type === 'exercise' ? b.sets.filter(x => x.done).length : 0), 0);
+      const totalVolume = s.blocks.reduce((sum, b) => {
+        if (b.type !== 'exercise') return sum;
+        return sum + b.sets.filter(x => x.done && x.weight != null).reduce((vs, x) => vs + (x.weight * x.reps), 0);
+      }, 0);
+      celebrationData.value = {
+        icon: s.isPartial ? '👏' : '🏆',
+        title: s.isPartial ? 'Session Logged' : 'Session Crushed!',
+        sub: s.isPartial ? 'Partial but counted. Every rep matters.' : 'All exercises complete. Great work.',
+        sessionName: s.name || 'Workout',
+        exDone: exBlocks.filter(b => b.sets.some(x => x.done)).length,
+        exTotal: exBlocks.length,
+        totalSets,
+        totalVolume: totalVolume > 0 ? totalVolume.toFixed(0) : null
+      };
+      showCelebration.value = true;
+    }
+
+    function dismissCelebration() {
+      showCelebration.value = false;
+      activeSession.value = null;
+      screen.value = 'home';
+      nextTick(() => autoBackupIfDue());
+    }
+    function confettiStyle(n) {
+      const colors = ['#ff9500','#0a84ff','#30d158','#ffd60a','#bf5af2','#ff375f'];
+      return {
+        left: (Math.random() * 100) + '%',
+        background: colors[n % colors.length],
+        animationDelay: (Math.random() * 0.5) + 's',
+        transform: `rotate(${Math.random() * 360}deg)`
+      };
+    }
+
+    /* ---------- SESSION DETAIL ACTIONS ---------- */
+    function deleteDetailSession() {
+      if (!detailSession.value) return;
+      if (!confirm('Delete this session permanently?')) return;
+      sessions.value = sessions.value.filter(s => s.id !== detailSession.value.id);
+      save(LS.sessions, sessions.value);
+      goBack();
+    }
+
+    /* ---------- NAVIGATION ---------- */
+    function navigate(s, params) {
+      if (screen.value !== s) screenHistory.value.push(screen.value);
+      screenParams.value = params || {};
+      screen.value = s;
+      if (s === 'exercise-detail') nextTick(renderExerciseChart);
+    }
+    function goBack() {
+      screen.value = screenHistory.value.pop() || 'home';
+      screenParams.value = {};
+    }
+
+    /* ---------- EXERCISE CHART ---------- */
+    const exerciseChart = ref(null);
+    let chartInstance = null;
+    function renderExerciseChart() {
+      if (!exerciseChart.value || !detailExercise.value) return;
+      const key = detailExercise.value.key;
+      const ex = exercises.value.find(e => e.key === key);
+      const data = [];
+      [...completedSessions.value].sort((a,b) => a.date.localeCompare(b.date)).forEach(s => {
+        s.blocks.forEach(b => {
+          if (b.type === 'exercise' && b.exercise_key === key && b.sets[0] && b.sets[0].done) {
+            const val = ex.timeBased ? b.sets[0].reps : (ex.bodyweight ? b.sets[0].reps : b.sets[0].weight);
+            const target = b.targetReps || b.targetSeconds;
+            data.push({ x: s.date, y: val, flagged: target && b.sets[0].reps < target });
+          }
+        });
+      });
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+      if (!data.length) return;
+      const ctx = exerciseChart.value.getContext('2d');
+      const unitLabel = ex.timeBased ? 'seconds' : (ex.bodyweight ? 'reps' : 'kg');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.x.slice(5)),
+          datasets: [{
+            label: unitLabel,
+            data: data.map(d => d.y),
+            borderColor: '#ff9500',
+            backgroundColor: 'rgba(255,149,0,0.12)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: data.map(d => d.flagged ? '#ffd60a' : '#ff9500'),
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#8e8e93', font:{size:10} }, grid:{ color:'#2c2c2e' } },
+            y: { ticks: { color: '#8e8e93', font:{size:10} }, grid:{ color:'#2c2c2e' }, beginAtZero:false }
+          }
+        }
+      });
+    }
+
+    /* ---------- BACKUP / RESTORE ---------- */
+    const importFileInput = ref(null);
+
+    const lastBackupLabel = computed(() => {
+      if (!lastBackupDate.value) return 'Never backed up';
+      return 'Last backup: ' + relativeDate(lastBackupDate.value.slice(0,10));
+    });
+
+    const backupOverdue = computed(() => {
+      if (!completedSessions.value.length) return false;
+      if (!lastBackupDate.value) return true;
+      const daysSince = Math.floor((Date.now() - new Date(lastBackupDate.value).getTime()) / 86400000);
+      return daysSince >= 7;
+    });
+
+    function exportData() {
+      const data = {
+        exported_at: new Date().toISOString(),
+        version: 1,
+        sessions: sessions.value,
+        exercises: exercises.value
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `workout-backup-${localDateStr(new Date())}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      lastBackupDate.value = new Date().toISOString();
+      save(LS.lastBackup, lastBackupDate.value);
+    }
+
+    function autoBackupIfDue() {
+      if (!completedSessions.value.length) return;
+      const last = lastBackupDate.value ? new Date(lastBackupDate.value) : null;
+      const daysSince = last ? Math.floor((Date.now() - last.getTime()) / 86400000) : 999;
+      if (daysSince >= 7) exportData();
+    }
+
+    function triggerImport() {
+      importFileInput.value.click();
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data.sessions) { alert('Invalid backup file.'); return; }
+          if (!confirm(`Restore ${data.sessions.length} sessions from ${data.exported_at ? data.exported_at.slice(0,10) : 'backup'}? This will overwrite current data.`)) return;
+          sessions.value = data.sessions;
+          save(LS.sessions, sessions.value);
+          if (data.exercises && data.exercises.length) {
+            exercises.value = data.exercises;
+            save(LS.exercises, exercises.value);
+          }
+          alert('Restored successfully. ' + data.sessions.length + ' sessions loaded.');
+        } catch {
+          alert('Could not read backup file.');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    /* ---------- EXPOSE ---------- */
+    return {
+      screen, screenParams, exercises, sessions, activeSession, activeBlockIndex,
+      partialSession, libFilter, showCelebration, celebrationData,
+      newSessionName, newSessionExercises, builderFilter,
+      muscleGroups: MUSCLE_GROUPS,
+      completedSessions, streak, lastSession, sessionsByDate,
+      weekStats, monthStats, heatmap, heatmapTotal,
+      exerciseProgression, topCallout, muscleGroupCoverage,
+      sessionProgressPct, allBlocksDone, sessionCanFinish,
+      detailSession, detailExercise, exerciseRecentSessions,
+      filteredLibrary, filteredBuilderLibrary,
+      lastBackupLabel, backupOverdue,
+      exerciseName, exerciseIsBodyweight, groupLabel, relativeDate,
+      dayOf, monthOf, countLoggedExercises, historyExerciseSummary,
+      navigate, goBack,
+      toggleBuilderExercise, removeBuilderExercise, isInBuilder,
+      startFreeFormSession, resumeSession,
+      addSet, removeSet, markBlockDone, editBlock, skipBlock,
+      cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
+      deleteDetailSession, exportData, triggerImport, importData,
+      exerciseChart, importFileInput
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
