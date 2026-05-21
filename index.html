@@ -331,36 +331,28 @@
     </div>
     <div class="content">
 
-      <div class="section-label">Session Name</div>
-      <div class="card card-pad">
-        <input type="text" class="modal-input" v-model="newSessionName" placeholder="e.g. Push Day, Chest & Tri…" style="margin-bottom:0;" @keydown.enter="$event.target.blur()">
-      </div>
-
       <div class="section-label">Exercises <span class="muted" style="font-weight:400; text-transform:none; font-size:12px;">{{ newSessionExercises.length ? newSessionExercises.length + ' added' : '' }}</span></div>
       <div v-if="!newSessionExercises.length" class="card card-pad center muted small">
-        Add exercises from the list below
+        Search or browse below to add exercises
       </div>
       <div v-else class="card mb12">
-        <div v-for="(ex, i) in newSessionExercises" :key="ex.exercise_key" class="builder-ex-row">
-          <div class="builder-ex-name">
-            {{ exerciseName(ex.exercise_key) }}
-            <button @click="removeBuilderExercise(i)" style="background:none; border:none; color:var(--red); font-size:20px; line-height:1; cursor:pointer; padding:0 0 0 8px;">×</button>
+        <div v-for="(ex, i) in newSessionExercises" :key="ex.exercise_key" class="row">
+          <div class="grow">
+            <div style="font-weight:500;">{{ exerciseName(ex.exercise_key) }}</div>
+            <div class="row-detail">3 sets · last weight auto-filled</div>
           </div>
-          <div class="builder-ex-controls">
-            <input type="number" class="builder-ex-input" v-model.number="ex.sets" placeholder="3" min="1" max="10">
-            <span class="builder-ex-label">sets ×</span>
-            <input type="number" class="builder-ex-input" v-model.number="ex.targetReps" placeholder="10" min="1" max="100">
-            <span class="builder-ex-label">reps</span>
-          </div>
+          <button @click="removeBuilderExercise(i)" style="background:none; border:none; color:var(--red); font-size:22px; line-height:1; cursor:pointer; padding:4px 8px;">×</button>
         </div>
       </div>
 
       <div class="section-label">Add Exercises</div>
+      <input type="text" class="modal-input" v-model="builderSearch" placeholder="Search exercises…" style="margin-bottom:8px;">
       <div class="chips">
-        <button class="chip" :class="{active: builderFilter==='all'}" @click="builderFilter='all'">All</button>
-        <button v-for="g in muscleGroups" :key="g.key" class="chip" :class="{active: builderFilter===g.key}" @click="builderFilter=g.key">{{ g.label }}</button>
+        <button class="chip" :class="{active: builderFilter==='all' && !builderSearch}" @click="builderFilter='all'; builderSearch=''">All</button>
+        <button v-for="g in muscleGroups" :key="g.key" class="chip" :class="{active: builderFilter===g.key && !builderSearch}" @click="builderFilter=g.key; builderSearch=''">{{ g.label }}</button>
       </div>
       <div class="card mb16">
+        <div v-if="!filteredBuilderLibrary.length" class="card-pad center muted small">No exercises found</div>
         <div v-for="ex in filteredBuilderLibrary" :key="ex.id" class="row row-tap" @click="toggleBuilderExercise(ex.key)">
           <div class="grow">
             <div style="font-weight:500;">{{ ex.name }}</div>
@@ -811,6 +803,7 @@ createApp({
 
     /* Library */
     const libFilter = ref('all');
+    const builderSearch = ref('');
 
     /* Celebration */
     const showCelebration = ref(false);
@@ -1010,6 +1003,12 @@ createApp({
     });
 
     const filteredBuilderLibrary = computed(() => {
+      const q = builderSearch.value.trim().toLowerCase();
+      if (q) {
+        return exercises.value
+          .filter(e => e.type !== 'cardio' && e.name.toLowerCase().includes(q))
+          .sort((a,b) => a.name.localeCompare(b.name));
+      }
       const list = builderFilter.value === 'all'
         ? exercises.value.filter(e => e.type !== 'cardio')
         : exercises.value.filter(e => e.group === builderFilter.value);
@@ -1058,6 +1057,15 @@ createApp({
     }
 
     /* ---------- SESSION BUILDER ---------- */
+    function autoSessionName() {
+      const freq = {};
+      newSessionExercises.value.forEach(e => {
+        const ex = exercises.value.find(x => x.key === e.exercise_key);
+        if (ex && ex.group !== 'cardio') freq[ex.group] = (freq[ex.group] || 0) + 1;
+      });
+      const top = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,2).map(([k]) => groupLabel(k));
+      return top.length ? top.join(' · ') : 'Workout';
+    }
     function toggleBuilderExercise(key) {
       const idx = newSessionExercises.value.findIndex(e => e.exercise_key === key);
       if (idx !== -1) {
@@ -1102,7 +1110,7 @@ createApp({
         completed_at: null,
         isPartial: false,
         inProgress: true,
-        name: newSessionName.value.trim() || 'Workout',
+        name: autoSessionName(),
         blocks
       };
     }
@@ -1114,9 +1122,9 @@ createApp({
       sessions.value.push(activeSession.value);
       save(LS.sessions, sessions.value);
       partialSession.value = null;
-      newSessionName.value = '';
       newSessionExercises.value = [];
       builderFilter.value = 'all';
+      builderSearch.value = '';
       screen.value = 'session';
     }
 
@@ -1383,7 +1391,7 @@ createApp({
     return {
       screen, screenParams, exercises, sessions, activeSession, activeBlockIndex,
       partialSession, libFilter, showCelebration, celebrationData,
-      newSessionName, newSessionExercises, builderFilter,
+      newSessionExercises, builderFilter, builderSearch,
       muscleGroups: MUSCLE_GROUPS,
       completedSessions, streak, lastSession, sessionsByDate,
       weekStats, monthStats, heatmap, heatmapTotal,
