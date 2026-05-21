@@ -191,6 +191,14 @@ No external CSS framework. All styles are inline in the `<style>` block in `<hea
 - Merge to `main` to deploy (Vercel auto-deploys on push to main)
 - Tag stable checkpoints: `git tag -a vYYYY-MM-DD -m "description"`
 
+## Checkpoints
+
+| Date | Commit | Description |
+|---|---|---|
+| 2026-05-21 | `1e5966c` | Supabase auth + sync + keep-alive + CLAUDE.md. Full working state. |
+
+To roll back to a checkpoint: `git checkout 1e5966c` (detached HEAD to inspect) or `git revert` to undo commits while keeping history.
+
 ## What NOT to Do
 
 - **Don't add a build step** — no npm, no bundler, no compilation. CDN only.
