@@ -1,0 +1,15 @@
+name: Supabase Keep-Alive
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday 9am UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -sf "https://xguorgktfqmnpfrsdesh.supabase.co/rest/v1/health_check?select=updated_at" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndW9yZ2t0ZnFtbnBmcnNkZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjMwMzcsImV4cCI6MjA5NDkzOTAzN30.ji97HrWP5wXf5U_AbVR5NhQWAOmlPtCSn3LMYDY7_E4" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndW9yZ2t0ZnFtbnBmcnNkZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjMwMzcsImV4cCI6MjA5NDkzOTAzN30.ji97HrWP5wXf5U_AbVR5NhQWAOmlPtCSn3LMYDY7_E4"

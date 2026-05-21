@@ -10,6 +10,7 @@
   <title>Workout</title>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     :root {
@@ -242,6 +243,35 @@
 </head>
 <body>
 <div id="app">
+
+  <!-- ========= AUTH OVERLAY ========= -->
+  <div v-if="authLoading" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;">
+    <div style="text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">🏋️</div>
+      <div style="color:var(--text2);font-size:14px;">Loading…</div>
+    </div>
+  </div>
+  <div v-else-if="!currentUser" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px;">
+    <div style="width:100%;max-width:340px;">
+      <div style="text-align:center;margin-bottom:40px;">
+        <div style="font-size:56px;margin-bottom:12px;">🏋️</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;">Workout</div>
+        <div style="color:var(--text2);font-size:14px;margin-top:6px;">Sign in to sync your data</div>
+      </div>
+      <div v-if="!authSent">
+        <input class="modal-input" type="email" v-model="authEmail" placeholder="your@email.com" @keyup.enter="sendMagicLink" autocomplete="email" style="margin-bottom:12px;">
+        <button class="btn btn-primary" @click="sendMagicLink" :disabled="authSending" style="width:100%;">
+          {{ authSending ? 'Sending…' : 'Send Magic Link' }}
+        </button>
+      </div>
+      <div v-else style="text-align:center;">
+        <div style="font-size:48px;margin-bottom:12px;">📧</div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Check your email</div>
+        <div style="color:var(--text2);font-size:14px;line-height:1.5;">Link sent to <strong style="color:var(--text);">{{ authEmail }}</strong>. Tap it to sign in — you can close this tab.</div>
+        <button class="btn btn-secondary" @click="authSent=false; authEmail=''" style="width:100%;margin-top:20px;">Use different email</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ========= HOME ========= -->
   <div v-if="screen==='home'" class="screen">
@@ -547,6 +577,17 @@
         </div>
       </div>
 
+      <div class="section-label">Cloud Sync</div>
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <div style="font-weight:600;">{{ currentUser ? 'Signed In' : 'Not Signed In' }}</div>
+            <div class="row-detail">{{ currentUser ? currentUser.email : 'Data stored locally only' }}</div>
+          </div>
+          <button v-if="currentUser" class="btn-sm" @click="signOut" style="color:var(--red);background:rgba(255,69,58,0.15);border-radius:8px;padding:6px 12px;font-size:13px;">Sign Out</button>
+        </div>
+      </div>
+
       <div class="section-label">Data & Backup</div>
       <div class="card">
         <div class="row">
@@ -799,6 +840,13 @@ const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStar
 const todayStr = () => localDateStr(new Date());
 
 /* ========================================================================== */
+/*  SUPABASE                                                                  */
+/* ========================================================================== */
+const SUPABASE_URL = 'https://xguorgktfqmnpfrsdesh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndW9yZ2t0ZnFtbnBmcnNkZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjMwMzcsImV4cCI6MjA5NDkzOTAzN30.ji97HrWP5wXf5U_AbVR5NhQWAOmlPtCSn3LMYDY7_E4';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ========================================================================== */
 /*  APP                                                                       */
 /* ========================================================================== */
 createApp({
@@ -817,6 +865,13 @@ createApp({
 
     const sessions = ref(load(LS.sessions, []));
     const lastBackupDate = ref(load(LS.lastBackup, null));
+
+    /* Auth & sync */
+    const currentUser = ref(null);
+    const authLoading = ref(true);
+    const authEmail = ref('');
+    const authSending = ref(false);
+    const authSent = ref(false);
 
     const activeSession = ref(null);
     const activeBlockIndex = ref(0);
@@ -848,6 +903,15 @@ createApp({
     onMounted(() => {
       const partial = sessions.value.find(s => s.isPartial && !s.completed_at && s.inProgress);
       if (partial) partialSession.value = partial;
+
+      sb.auth.onAuthStateChange(async (event, session) => {
+        const wasLoggedIn = !!currentUser.value;
+        currentUser.value = session?.user ?? null;
+        authLoading.value = false;
+        if (session?.user && !wasLoggedIn) {
+          await loadFromSupabase();
+        }
+      });
     });
 
     /* ---------- COMPUTED: SESSIONS ---------- */
@@ -1204,6 +1268,7 @@ createApp({
       const ex = { id: key, key, name, group: newExGroup.value, bodyweight: newExBodyweight.value };
       exercises.value.push(ex);
       save(LS.exercises, exercises.value);
+      syncExerciseToSupabase(ex);
       newExName.value = '';
       newExBodyweight.value = false;
       showCreateExercise.value = false;
@@ -1263,6 +1328,98 @@ createApp({
       if (i !== -1) sessions.value[i] = activeSession.value;
       else sessions.value.push(activeSession.value);
       save(LS.sessions, sessions.value);
+      syncSessionToSupabase(activeSession.value);
+    }
+
+    /* ---------- SUPABASE SYNC ---------- */
+    async function loadFromSupabase() {
+      if (!currentUser.value) return;
+      try {
+        const [{ data: remoteSessions }, { data: remoteExercises }] = await Promise.all([
+          sb.from('sessions').select('*'),
+          sb.from('custom_exercises').select('*')
+        ]);
+
+        if (remoteSessions?.length) {
+          const localIds = new Set(sessions.value.map(s => s.id));
+          const toAdd = remoteSessions
+            .filter(r => !localIds.has(r.id))
+            .map(r => ({
+              id: r.id, date: r.date, name: r.name,
+              created_at: r.created_at, completed_at: r.completed_at,
+              inProgress: r.in_progress, isPartial: r.is_partial,
+              retro: r.retro || false, blocks: r.blocks || []
+            }));
+          if (toAdd.length) { sessions.value = [...sessions.value, ...toAdd]; save(LS.sessions, sessions.value); }
+        }
+
+        if (remoteExercises?.length) {
+          const localKeys = new Set(exercises.value.map(e => e.key));
+          const seedKeys = new Set(SEED_EXERCISES.map(e => e.key));
+          const toAdd = remoteExercises
+            .filter(r => !localKeys.has(r.key) && !seedKeys.has(r.key))
+            .map(r => ({ id: r.id, key: r.key, name: r.name, group: r.group, bodyweight: r.bodyweight }));
+          if (toAdd.length) { exercises.value = [...exercises.value, ...toAdd]; save(LS.exercises, exercises.value); }
+        }
+
+        const remoteIds = new Set((remoteSessions || []).map(r => r.id));
+        sessions.value.forEach(s => { if (!remoteIds.has(s.id)) syncSessionToSupabase(s); });
+
+        const remoteKeys = new Set((remoteExercises || []).map(r => r.key));
+        const seedKeys2 = new Set(SEED_EXERCISES.map(e => e.key));
+        exercises.value.forEach(e => { if (!remoteKeys.has(e.key) && !seedKeys2.has(e.key)) syncExerciseToSupabase(e); });
+      } catch (err) {
+        console.error('Supabase sync error:', err);
+      }
+    }
+
+    async function syncSessionToSupabase(session) {
+      if (!currentUser.value) return;
+      try {
+        await sb.from('sessions').upsert({
+          id: session.id, user_id: currentUser.value.id,
+          date: session.date, name: session.name || 'Workout',
+          created_at: session.created_at, completed_at: session.completed_at || null,
+          in_progress: session.inProgress, is_partial: session.isPartial,
+          retro: session.retro || false, blocks: session.blocks
+        });
+      } catch (err) { console.error('Session sync error:', err); }
+    }
+
+    async function syncExerciseToSupabase(ex) {
+      if (!currentUser.value) return;
+      try {
+        await sb.from('custom_exercises').upsert({
+          id: ex.key, user_id: currentUser.value.id,
+          key: ex.key, name: ex.name, group: ex.group, bodyweight: ex.bodyweight || false
+        });
+      } catch (err) { console.error('Exercise sync error:', err); }
+    }
+
+    async function deleteSessionFromSupabase(id) {
+      if (!currentUser.value) return;
+      try { await sb.from('sessions').delete().eq('id', id); }
+      catch (err) { console.error('Session delete error:', err); }
+    }
+
+    async function sendMagicLink() {
+      const email = authEmail.value.trim();
+      if (!email) return;
+      authSending.value = true;
+      try {
+        const { error } = await sb.auth.signInWithOtp({ email });
+        if (error) { alert(error.message); authSending.value = false; return; }
+        authSent.value = true;
+      } catch { alert('Could not send link. Check your connection.'); }
+      authSending.value = false;
+    }
+
+    async function signOut() {
+      if (!confirm('Sign out? Your local data is kept.')) return;
+      await sb.auth.signOut();
+      currentUser.value = null;
+      authSent.value = false;
+      authEmail.value = '';
     }
 
     function cancelOrPauseSession() {
@@ -1331,8 +1488,10 @@ createApp({
     function deleteDetailSession() {
       if (!detailSession.value) return;
       if (!confirm('Delete this session permanently?')) return;
-      sessions.value = sessions.value.filter(s => s.id !== detailSession.value.id);
+      const id = detailSession.value.id;
+      sessions.value = sessions.value.filter(s => s.id !== id);
       save(LS.sessions, sessions.value);
+      deleteSessionFromSupabase(id);
       goBack();
     }
 
@@ -1456,6 +1615,13 @@ createApp({
             exercises.value = data.exercises;
             save(LS.exercises, exercises.value);
           }
+          if (currentUser.value) {
+            data.sessions.forEach(s => syncSessionToSupabase(s));
+            if (data.exercises) {
+              const seedKeys = new Set(SEED_EXERCISES.map(e => e.key));
+              data.exercises.filter(ex => !seedKeys.has(ex.key)).forEach(ex => syncExerciseToSupabase(ex));
+            }
+          }
           alert('Restored successfully. ' + data.sessions.length + ' sessions loaded.');
         } catch {
           alert('Could not read backup file.');
@@ -1488,7 +1654,9 @@ createApp({
       addSet, removeSet, markBlockDone, editBlock, persistSession,
       cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
       deleteDetailSession, exportData, triggerImport, importData,
-      exerciseChart, importFileInput
+      exerciseChart, importFileInput,
+      currentUser, authLoading, authEmail, authSending, authSent,
+      sendMagicLink, signOut
     };
   }
 }).mount('#app');
