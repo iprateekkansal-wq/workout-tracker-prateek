@@ -200,6 +200,8 @@
     .modal-title { font-size:20px; font-weight:700; margin-bottom:14px; }
     .modal-input { width:100%; background:var(--card2); border:none; border-radius:10px; padding:12px; color:var(--text); font-size:16px; margin-bottom:10px; }
     .modal-input:focus { outline:2px solid var(--orange); }
+    .modal-input.input-date { color-scheme:dark; }
+    select.modal-input { appearance:none; -webkit-appearance:none; }
 
     /* History row */
     .history-row { display:flex; gap:12px; padding:14px 16px; cursor:pointer; }
@@ -277,6 +279,7 @@
 
       <!-- Start new session -->
       <button class="btn btn-primary mb12" @click="startNewSession">+ New Session</button>
+      <button class="btn btn-secondary mb12" @click="showRetroPicker=true">+ Log Past Session</button>
 
       <!-- Last session -->
       <div v-if="lastSession" class="section-label">Last Session</div>
@@ -592,7 +595,10 @@
 
   <!-- ========= LIBRARY ========= -->
   <div v-if="screen==='library'" class="screen">
-    <div class="screen-header"><h1>Exercises</h1></div>
+    <div class="screen-header" style="display:flex;align-items:flex-end;justify-content:space-between;padding-right:16px;">
+      <h1>Exercises</h1>
+      <button class="btn-sm btn-sm-blue" @click="newExGroup=libFilter!=='all'?libFilter:'chest'; showCreateExercise=true" style="margin-bottom:14px;">+ New</button>
+    </div>
     <div class="content">
       <div class="chips">
         <button class="chip" :class="{active: libFilter==='all'}" @click="libFilter='all'">All</button>
@@ -627,6 +633,41 @@
         </div>
         <div v-if="isInSession(ex.key)" style="color:var(--text2);font-size:13px;">Added</div>
         <div v-else style="color:var(--blue);font-size:24px;font-weight:300;line-height:1;">+</div>
+      </div>
+      <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:4px;">
+        <button class="btn btn-secondary" @click="newExGroup=pickerFilter!=='all'?pickerFilter:'chest'; showExercisePicker=false; showCreateExercise=true">+ Create New Exercise</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= RETRO DATE PICKER ========= -->
+  <div v-if="showRetroPicker" class="modal-backdrop" @click.self="showRetroPicker=false">
+    <div class="modal">
+      <div class="modal-title">Log Past Session</div>
+      <div class="section-label" style="padding-top:0;">Date</div>
+      <input type="date" class="modal-input input-date" v-model="retroDate" :max="todayDateStr">
+      <div class="btn-row mt12">
+        <button class="btn btn-secondary" @click="showRetroPicker=false">Cancel</button>
+        <button class="btn btn-primary" @click="startRetroSession" :disabled="!retroDate">Start Logging</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= CREATE EXERCISE ========= -->
+  <div v-if="showCreateExercise" class="modal-backdrop" @click.self="showCreateExercise=false">
+    <div class="modal">
+      <div class="modal-title">New Exercise</div>
+      <input type="text" class="modal-input" v-model="newExName" placeholder="Exercise name (e.g. Incline DB Press)">
+      <select class="modal-input" v-model="newExGroup">
+        <option v-for="g in muscleGroups" :key="g.key" :value="g.key">{{ g.label }}</option>
+      </select>
+      <div class="row" style="padding:4px 0 12px;">
+        <div class="row-label" style="font-size:15px;">Bodyweight exercise</div>
+        <input type="checkbox" v-model="newExBodyweight" style="width:20px;height:20px;accent-color:var(--orange);cursor:pointer;">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" @click="showCreateExercise=false">Cancel</button>
+        <button class="btn btn-primary" @click="createExercise" :disabled="!newExName.trim()">Add to Library</button>
       </div>
     </div>
   </div>
@@ -785,6 +826,16 @@ createApp({
     const showExercisePicker = ref(false);
     const pickerSearch = ref('');
     const pickerFilter = ref('all');
+
+    /* Retro session */
+    const showRetroPicker = ref(false);
+    const retroDate = ref(todayStr());
+
+    /* Create exercise */
+    const showCreateExercise = ref(false);
+    const newExName = ref('');
+    const newExGroup = ref('chest');
+    const newExBodyweight = ref(false);
 
     /* Library */
     const libFilter = ref('all');
@@ -1118,9 +1169,48 @@ createApp({
       showExercisePicker.value = true;
     }
 
+    function startRetroSession() {
+      if (!retroDate.value) return;
+      const session = {
+        id: uuid(),
+        date: retroDate.value,
+        created_at: new Date().toISOString(),
+        completed_at: null,
+        isPartial: false,
+        inProgress: true,
+        name: 'Workout',
+        blocks: [],
+        retro: true
+      };
+      activeSession.value = session;
+      sessions.value.push(session);
+      save(LS.sessions, sessions.value);
+      partialSession.value = null;
+      showRetroPicker.value = false;
+      screen.value = 'session';
+      showExercisePicker.value = true;
+    }
+
     function resumeSession() {
       activeSession.value = partialSession.value;
       screen.value = 'session';
+    }
+
+    /* ---------- CREATE EXERCISE ---------- */
+    function createExercise() {
+      const name = newExName.value.trim();
+      if (!name) return;
+      const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_') + '_' + Date.now().toString(36);
+      const ex = { id: key, key, name, group: newExGroup.value, bodyweight: newExBodyweight.value };
+      exercises.value.push(ex);
+      save(LS.exercises, exercises.value);
+      newExName.value = '';
+      newExBodyweight.value = false;
+      showCreateExercise.value = false;
+      if (activeSession.value) {
+        addExerciseToSession(key);
+        showExercisePicker.value = false;
+      }
     }
 
     /* ---------- SET LOGGING ---------- */
@@ -1380,6 +1470,8 @@ createApp({
       screen, screenParams, exercises, sessions, activeSession,
       partialSession, libFilter, showCelebration, celebrationData,
       showExercisePicker, pickerSearch, pickerFilter,
+      showRetroPicker, retroDate, todayDateStr: todayStr(),
+      showCreateExercise, newExName, newExGroup, newExBodyweight,
       muscleGroups: MUSCLE_GROUPS,
       completedSessions, streak, lastSession, sessionsByDate,
       weekStats, monthStats, heatmap, heatmapTotal,
@@ -1391,7 +1483,8 @@ createApp({
       exerciseName, exerciseIsBodyweight, groupLabel, relativeDate,
       dayOf, monthOf, countLoggedExercises, historyExerciseSummary,
       navigate, goBack,
-      startNewSession, resumeSession, addExerciseToSession, isInSession, removeBlock,
+      startNewSession, startRetroSession, resumeSession,
+      addExerciseToSession, isInSession, removeBlock, createExercise,
       addSet, removeSet, markBlockDone, editBlock, persistSession,
       cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
       deleteDetailSession, exportData, triggerImport, importData,
