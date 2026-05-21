@@ -276,7 +276,7 @@
       </div>
 
       <!-- Start new session -->
-      <button class="btn btn-primary mb12" @click="navigate('new-session')">+ New Session</button>
+      <button class="btn btn-primary mb12" @click="startNewSession">+ New Session</button>
 
       <!-- Last session -->
       <div v-if="lastSession" class="section-label">Last Session</div>
@@ -322,135 +322,91 @@
     </div>
   </div>
 
-  <!-- ========= NEW SESSION BUILDER ========= -->
-  <div v-if="screen==='new-session'" class="screen no-nav">
-    <div class="screen-header-nav">
-      <button class="back-btn" @click="goBack">‹ Back</button>
-      <h2>New Session</h2>
-      <div style="min-width:60px;"></div>
-    </div>
-    <div class="content">
-
-      <div class="section-label">Session Name</div>
-      <div class="card card-pad">
-        <input type="text" class="modal-input" v-model="newSessionName" placeholder="e.g. Push Day, Chest & Tri…" style="margin-bottom:0;" @keydown.enter="$event.target.blur()">
-      </div>
-
-      <div class="section-label">Exercises <span class="muted" style="font-weight:400; text-transform:none; font-size:12px;">{{ newSessionExercises.length ? newSessionExercises.length + ' added' : '' }}</span></div>
-      <div v-if="!newSessionExercises.length" class="card card-pad center muted small">
-        Add exercises from the list below
-      </div>
-      <div v-else class="card mb12">
-        <div v-for="(ex, i) in newSessionExercises" :key="ex.exercise_key" class="builder-ex-row">
-          <div class="builder-ex-name">
-            {{ exerciseName(ex.exercise_key) }}
-            <button @click="removeBuilderExercise(i)" style="background:none; border:none; color:var(--red); font-size:20px; line-height:1; cursor:pointer; padding:0 0 0 8px;">×</button>
-          </div>
-          <div class="builder-ex-controls">
-            <input type="number" class="builder-ex-input" v-model.number="ex.sets" placeholder="3" min="1" max="10">
-            <span class="builder-ex-label">sets ×</span>
-            <input type="number" class="builder-ex-input" v-model.number="ex.targetReps" placeholder="10" min="1" max="100">
-            <span class="builder-ex-label">reps</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="section-label">Add Exercises</div>
-      <div class="chips">
-        <button class="chip" :class="{active: builderFilter==='all'}" @click="builderFilter='all'">All</button>
-        <button v-for="g in muscleGroups" :key="g.key" class="chip" :class="{active: builderFilter===g.key}" @click="builderFilter=g.key">{{ g.label }}</button>
-      </div>
-      <div class="card mb16">
-        <div v-for="ex in filteredBuilderLibrary" :key="ex.id" class="row row-tap" @click="toggleBuilderExercise(ex.key)">
-          <div class="grow">
-            <div style="font-weight:500;">{{ ex.name }}</div>
-            <div class="row-detail">{{ groupLabel(ex.group) }}<span v-if="ex.bodyweight"> · bodyweight</span></div>
-          </div>
-          <div v-if="isInBuilder(ex.key)" style="color:var(--green); font-size:18px; font-weight:700; line-height:1;">✓</div>
-          <div v-else style="color:var(--blue); font-size:24px; font-weight:300; line-height:1;">+</div>
-        </div>
-      </div>
-
-      <button class="btn btn-primary mb16" @click="startFreeFormSession" :disabled="!newSessionExercises.length">
-        Start Session{{ newSessionExercises.length ? ' · ' + newSessionExercises.length + (newSessionExercises.length === 1 ? ' exercise' : ' exercises') : '' }}
-      </button>
-    </div>
-  </div>
-
-  <!-- ========= SESSION (block-based) ========= -->
+  <!-- ========= SESSION ========= -->
   <div v-if="screen==='session' && activeSession" class="screen no-nav session-screen">
     <div class="session-progress">
       <div class="session-progress-text">
         <button class="back-btn" @click="cancelOrPauseSession">‹ Home</button>
-        <span class="left" style="font-size:13px;">{{ activeSession.name || 'Session' }}</span>
-        <div style="min-width:60px;"></div>
+        <span class="left" style="font-size:13px;">{{ activeSession.name || 'Workout' }}</span>
+        <button @click="showExercisePicker=true" style="color:var(--blue);font-size:15px;font-weight:600;background:none;border:none;cursor:pointer;min-width:60px;text-align:right;">+ Add</button>
       </div>
       <div class="session-progress-bar"><div class="session-progress-fill" :style="{width: sessionProgressPct + '%'}"></div></div>
     </div>
 
     <div style="padding-top:8px;">
-      <div v-for="(block,bi) in activeSession.blocks" :key="bi" class="block" :class="{done:block.done, upcoming:!block.done && bi !== activeBlockIndex}">
+
+      <div v-if="!activeSession.blocks.length" class="empty" style="padding:40px 20px;">
+        <div class="empty-icon">🏋️</div>
+        <div class="empty-msg">Tap <strong style="color:var(--blue);">+ Add</strong> above to add your first exercise</div>
+      </div>
+
+      <div v-for="(block,bi) in activeSession.blocks" :key="bi" class="block" :class="{done:block.done}">
 
         <!-- EXERCISE -->
         <template v-if="block.type==='exercise'">
-          <div class="block-header">
-            <div class="block-type">Block {{ bi+1 }}</div>
-            <div class="block-name">{{ exerciseName(block.exercise_key) }}</div>
-            <div class="block-sub">Target: {{ block.sets.length }} × {{ block.targetReps ? block.targetReps + ' reps' : block.targetSeconds ? block.targetSeconds + 's' : '—' }}</div>
+          <div class="block-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div>
+              <div class="block-name">{{ exerciseName(block.exercise_key) }}</div>
+              <div class="block-sub">{{ block.sets.length }} sets</div>
+            </div>
+            <button v-if="!block.done" @click="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;margin-top:-2px;">×</button>
           </div>
           <div class="block-body">
             <div v-for="(s,si) in block.sets" :key="si" class="set-row" :class="{logged:s.done}">
               <div class="set-num">{{ si+1 }}</div>
               <template v-if="!exerciseIsBodyweight(block.exercise_key)">
-                <input class="set-input" type="number" inputmode="decimal" v-model.number="s.weight" :placeholder="s.prefillWeight || '–'" :disabled="bi !== activeBlockIndex">
+                <input class="set-input" type="number" inputmode="decimal" v-model.number="s.weight" :placeholder="s.prefillWeight || '–'" @change="persistSession">
                 <span class="set-unit">kg</span>
                 <span class="set-x">×</span>
               </template>
-              <input class="set-input" type="number" inputmode="numeric" v-model.number="s.reps" :placeholder="block.targetReps || block.targetSeconds || '–'" :disabled="bi !== activeBlockIndex">
+              <input class="set-input" type="number" inputmode="numeric" v-model.number="s.reps" :placeholder="block.targetReps || '–'" @change="persistSession">
               <span class="set-unit">{{ block.targetSeconds ? 'sec' : 'rep' }}</span>
             </div>
-            <div v-if="bi === activeBlockIndex" class="add-remove">
+            <div v-if="!block.done" class="add-remove">
               <button @click="removeSet(bi)" :disabled="block.sets.length <= 1">– Set</button>
               <button @click="addSet(bi)">+ Set</button>
             </div>
           </div>
           <div class="block-actions">
-            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn" @click="skipBlock(bi)">Skip</button>
-            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
+            <button v-if="!block.done" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
             <button v-if="block.done" class="block-action-btn success" disabled>✓ Done</button>
             <button v-if="block.done" class="block-action-btn" @click="editBlock(bi)">Edit</button>
           </div>
         </template>
 
-        <!-- CARDIO (treadmill etc.) -->
+        <!-- CARDIO -->
         <template v-else-if="block.type==='cardio'">
-          <div class="block-header">
-            <div class="block-type">Block {{ bi+1 }}</div>
-            <div class="block-name">🚶 {{ exerciseName(block.exercise_key) }}</div>
-            <div class="block-sub">{{ block.targetMinutes ? block.targetMinutes + ' min target' : 'Log your session' }}</div>
+          <div class="block-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div>
+              <div class="block-name">🚶 {{ exerciseName(block.exercise_key) }}</div>
+              <div class="block-sub">Log your cardio</div>
+            </div>
+            <button v-if="!block.done" @click="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;margin-top:-2px;">×</button>
           </div>
           <div class="block-body">
             <div class="cardio-input">
               <div class="cardio-field">
                 <label>Minutes</label>
-                <input type="number" v-model.number="block.actualMinutes" :placeholder="block.targetMinutes || '–'">
+                <input type="number" v-model.number="block.actualMinutes" placeholder="–" @change="persistSession">
               </div>
               <div class="cardio-field">
                 <label>Speed (km/h)</label>
-                <input type="number" step="0.1" v-model.number="block.speed" placeholder="—">
+                <input type="number" step="0.1" v-model.number="block.speed" placeholder="—" @change="persistSession">
               </div>
             </div>
           </div>
           <div class="block-actions">
-            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn" @click="skipBlock(bi)">Skip</button>
-            <button v-if="!block.done && bi === activeBlockIndex" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
+            <button v-if="!block.done" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
             <button v-if="block.done" class="block-action-btn success" disabled>✓ Done</button>
           </div>
         </template>
 
       </div>
 
-      <div style="padding:14px 16px 30px;">
+      <div style="padding:8px 16px 4px;">
+        <button class="btn btn-secondary" @click="showExercisePicker=true">+ Add Exercise</button>
+      </div>
+      <div style="padding:8px 16px 30px;">
         <button class="btn btn-primary" @click="finishSession" :disabled="!sessionCanFinish">
           {{ allBlocksDone ? 'Finish Session 🎉' : 'Finish Early' }}
         </button>
@@ -654,6 +610,27 @@
     </div>
   </div>
 
+  <!-- ========= EXERCISE PICKER ========= -->
+  <div v-if="showExercisePicker" class="modal-backdrop" @click.self="showExercisePicker=false">
+    <div class="modal">
+      <div class="modal-title">Add Exercise</div>
+      <input type="text" class="modal-input" v-model="pickerSearch" placeholder="Search exercises…">
+      <div class="chips" style="margin-bottom:8px;">
+        <button class="chip" :class="{active: pickerFilter==='all' && !pickerSearch}" @click="pickerFilter='all'; pickerSearch=''">All</button>
+        <button v-for="g in muscleGroups" :key="g.key" class="chip" :class="{active: pickerFilter===g.key && !pickerSearch}" @click="pickerFilter=g.key; pickerSearch=''">{{ g.label }}</button>
+      </div>
+      <div v-if="!filteredPickerLibrary.length" style="padding:20px 0; text-align:center;" class="muted small">No exercises found</div>
+      <div v-for="ex in filteredPickerLibrary" :key="ex.id" class="row row-tap" @click="addExerciseToSession(ex.key)">
+        <div class="grow">
+          <div style="font-weight:500;">{{ ex.name }}</div>
+          <div class="row-detail">{{ groupLabel(ex.group) }}<span v-if="ex.bodyweight"> · bodyweight</span></div>
+        </div>
+        <div v-if="isInSession(ex.key)" style="color:var(--text2);font-size:13px;">Added</div>
+        <div v-else style="color:var(--blue);font-size:24px;font-weight:300;line-height:1;">+</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ========= CELEBRATION OVERLAY ========= -->
   <div v-if="showCelebration" class="celebrate" @click="dismissCelebration">
     <div v-for="n in 24" :key="n" class="confetti-piece" :style="confettiStyle(n)"></div>
@@ -804,10 +781,10 @@ createApp({
     const activeBlockIndex = ref(0);
     const partialSession = ref(null);
 
-    /* Session builder state */
-    const newSessionName = ref('');
-    const newSessionExercises = ref([]);
-    const builderFilter = ref('all');
+    /* Exercise picker (in-session) */
+    const showExercisePicker = ref(false);
+    const pickerSearch = ref('');
+    const pickerFilter = ref('all');
 
     /* Library */
     const libFilter = ref('all');
@@ -1009,12 +986,6 @@ createApp({
       return [...list].sort((a,b) => a.name.localeCompare(b.name));
     });
 
-    const filteredBuilderLibrary = computed(() => {
-      const list = builderFilter.value === 'all'
-        ? exercises.value.filter(e => e.type !== 'cardio')
-        : exercises.value.filter(e => e.group === builderFilter.value);
-      return [...list].sort((a,b) => a.name.localeCompare(b.name));
-    });
 
     /* ---------- HELPERS ---------- */
     function exerciseName(key) {
@@ -1056,74 +1027,99 @@ createApp({
       }
       return null;
     }
-
-    /* ---------- SESSION BUILDER ---------- */
-    function toggleBuilderExercise(key) {
-      const idx = newSessionExercises.value.findIndex(e => e.exercise_key === key);
-      if (idx !== -1) {
-        newSessionExercises.value.splice(idx, 1);
-      } else {
-        newSessionExercises.value.push({ exercise_key: key, sets: 3, targetReps: 10 });
+    function getPrefillReps(exKey) {
+      const sorted = [...completedSessions.value].sort((a,b) => b.date.localeCompare(a.date));
+      for (const s of sorted) {
+        for (const b of s.blocks) {
+          if (b.type === 'exercise' && b.exercise_key === exKey) {
+            const lastDone = b.sets.filter(x => x.done && x.reps != null);
+            if (lastDone.length) return lastDone[0].reps;
+          }
+        }
       }
+      return 10;
     }
-    function removeBuilderExercise(i) {
-      newSessionExercises.value.splice(i, 1);
+
+    /* ---------- EXERCISE PICKER ---------- */
+    const filteredPickerLibrary = computed(() => {
+      const q = pickerSearch.value.trim().toLowerCase();
+      if (q) {
+        return exercises.value
+          .filter(e => e.name.toLowerCase().includes(q))
+          .sort((a,b) => a.name.localeCompare(b.name));
+      }
+      const list = pickerFilter.value === 'all'
+        ? exercises.value
+        : exercises.value.filter(e => e.group === pickerFilter.value);
+      return [...list].sort((a,b) => a.name.localeCompare(b.name));
+    });
+
+    function isInSession(key) {
+      if (!activeSession.value) return false;
+      return activeSession.value.blocks.some(b => b.exercise_key === key);
     }
-    function isInBuilder(key) {
-      return newSessionExercises.value.some(e => e.exercise_key === key);
+
+    function addExerciseToSession(key) {
+      if (!activeSession.value) return;
+      const ex = exercises.value.find(e => e.key === key);
+      if (!ex) return;
+      const prefillWeight = getPrefillWeight(key);
+      const prefillReps = getPrefillReps(key);
+      const block = ex.type === 'cardio'
+        ? { type: 'cardio', exercise_key: key, done: false }
+        : {
+            type: 'exercise',
+            exercise_key: key,
+            sets: Array.from({ length: 3 }, () => ({
+              weight: prefillWeight,
+              prefillWeight: prefillWeight,
+              reps: prefillReps,
+              done: false
+            })),
+            targetReps: prefillReps,
+            done: false
+          };
+      activeSession.value.blocks.push(block);
+      const freq = {};
+      activeSession.value.blocks.forEach(b => {
+        if (b.type !== 'exercise') return;
+        const e = exercises.value.find(x => x.key === b.exercise_key);
+        if (e && e.group !== 'cardio') freq[e.group] = (freq[e.group] || 0) + 1;
+      });
+      const top = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,2).map(([k]) => groupLabel(k));
+      activeSession.value.name = top.length ? top.join(' · ') : 'Workout';
+      persistSession();
+      pickerSearch.value = '';
+    }
+
+    function removeBlock(bi) {
+      if (!activeSession.value) return;
+      activeSession.value.blocks.splice(bi, 1);
+      persistSession();
     }
 
     /* ---------- SESSION START ---------- */
-    function buildFreeFormSession() {
-      const blocks = newSessionExercises.value.map(ex => {
-        const prefill = getPrefillWeight(ex.exercise_key);
-        const exDef = exercises.value.find(e => e.key === ex.exercise_key);
-        const isCardio = exDef && exDef.type === 'cardio';
-        if (isCardio) {
-          return { type:'cardio', exercise_key: ex.exercise_key, targetMinutes: ex.targetReps || null, done:false };
-        }
-        return {
-          type: 'exercise',
-          exercise_key: ex.exercise_key,
-          sets: Array.from({ length: ex.sets || 3 }, () => ({
-            weight: prefill,
-            prefillWeight: prefill,
-            reps: null,
-            done: false
-          })),
-          targetReps: ex.targetReps || 10,
-          done: false
-        };
-      });
-      return {
+    function startNewSession() {
+      const session = {
         id: uuid(),
         date: todayStr(),
         created_at: new Date().toISOString(),
         completed_at: null,
         isPartial: false,
         inProgress: true,
-        name: newSessionName.value.trim() || 'Workout',
-        blocks
+        name: 'Workout',
+        blocks: []
       };
-    }
-
-    function startFreeFormSession() {
-      if (!newSessionExercises.value.length) return;
-      activeSession.value = buildFreeFormSession();
-      activeBlockIndex.value = 0;
-      sessions.value.push(activeSession.value);
+      activeSession.value = session;
+      sessions.value.push(session);
       save(LS.sessions, sessions.value);
       partialSession.value = null;
-      newSessionName.value = '';
-      newSessionExercises.value = [];
-      builderFilter.value = 'all';
       screen.value = 'session';
+      showExercisePicker.value = true;
     }
 
     function resumeSession() {
       activeSession.value = partialSession.value;
-      const idx = activeSession.value.blocks.findIndex(b => !b.done);
-      activeBlockIndex.value = idx === -1 ? 0 : idx;
       screen.value = 'session';
     }
 
@@ -1381,23 +1377,22 @@ createApp({
 
     /* ---------- EXPOSE ---------- */
     return {
-      screen, screenParams, exercises, sessions, activeSession, activeBlockIndex,
+      screen, screenParams, exercises, sessions, activeSession,
       partialSession, libFilter, showCelebration, celebrationData,
-      newSessionName, newSessionExercises, builderFilter,
+      showExercisePicker, pickerSearch, pickerFilter,
       muscleGroups: MUSCLE_GROUPS,
       completedSessions, streak, lastSession, sessionsByDate,
       weekStats, monthStats, heatmap, heatmapTotal,
       exerciseProgression, topCallout, muscleGroupCoverage,
       sessionProgressPct, allBlocksDone, sessionCanFinish,
       detailSession, detailExercise, exerciseRecentSessions,
-      filteredLibrary, filteredBuilderLibrary,
+      filteredLibrary, filteredPickerLibrary,
       lastBackupLabel, backupOverdue,
       exerciseName, exerciseIsBodyweight, groupLabel, relativeDate,
       dayOf, monthOf, countLoggedExercises, historyExerciseSummary,
       navigate, goBack,
-      toggleBuilderExercise, removeBuilderExercise, isInBuilder,
-      startFreeFormSession, resumeSession,
-      addSet, removeSet, markBlockDone, editBlock, skipBlock,
+      startNewSession, resumeSession, addExerciseToSession, isInSession, removeBlock,
+      addSet, removeSet, markBlockDone, editBlock, persistSession,
       cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
       deleteDetailSession, exportData, triggerImport, importData,
       exerciseChart, importFileInput
