@@ -128,6 +128,12 @@ The magic link redirects to the app URL. Supabase dashboard → Authentication �
 
 `.github/workflows/keep-alive.yml` — GitHub Actions cron, every Monday 9am UTC. Pings `health_check` table with the anon key to prevent Supabase free tier pausing after 7 days of inactivity. Data is never deleted by pausing — project just needs ~30s to wake on next request.
 
+**GitHub Secrets required**:
+- `SUPABASE_URL`: `https://xguorgktfqmnpfrsdesh.supabase.co`
+- `SUPABASE_ANON_KEY`: The anon key JWT token
+
+Add these in **Settings → Secrets and variables → Actions**.
+
 ## Screens & Navigation
 
 Navigation uses a `screen` ref (string) with `screenHistory` stack for back navigation.
@@ -185,11 +191,30 @@ iOS-native dark theme. CSS variables in `:root`:
 
 No external CSS framework. All styles are inline in the `<style>` block in `<head>`.
 
-## Git Workflow
+## Git Workflow & Release Process
 
-- Develop on `claude/workout-tracking-app-u2CAV`
-- Merge to `main` to deploy (Vercel auto-deploys on push to main)
-- Tag stable checkpoints: `git tag -a vYYYY-MM-DD -m "description"`
+### Development
+
+- **Develop on**: `claude/workout-tracking-app-u2CAV`
+- **Main branch**: Production (`main`). Auto-deploys via Vercel. **Never push without explicit approval.**
+- **Versions & tags**: Tag stable releases with `git tag -a vYYYY-MM-DD -m "description"`
+
+### Release Steps
+
+1. Develop and test changes on `claude/workout-tracking-app-u2CAV`
+2. Update `RELEASE.md` with release notes before requesting approval
+3. **Request explicit approval** before pushing to `main`
+4. Once approved, push to `main` (Vercel auto-deploys)
+5. Create release tag: `git tag -a vYYYY-MM-DD -m "description"`
+
+### Release Documentation
+
+All releases must be documented in `RELEASE.md`. This file tracks:
+- Security updates
+- Bug fixes
+- Features
+- Breaking changes
+- Migration instructions (if needed)
 
 ## Checkpoints
 
