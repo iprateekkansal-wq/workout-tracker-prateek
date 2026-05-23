@@ -844,8 +844,31 @@ const todayStr = () => localDateStr(new Date());
 /* ========================================================================== */
 const SUPABASE_URL = 'https://xguorgktfqmnpfrsdesh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndW9yZ2t0ZnFtbnBmcnNkZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjMwMzcsImV4cCI6MjA5NDkzOTAzN30.ji97HrWP5wXf5U_AbVR5NhQWAOmlPtCSn3LMYDY7_E4';
+
+/* Cookie storage so sessions persist across Safari and iOS PWA contexts */
+const cookieStorage = {
+  getItem(key) {
+    const cookies = document.cookie.split('; ');
+    for (const c of cookies) {
+      const eq = c.indexOf('=');
+      if (c.slice(0, eq) === key) return decodeURIComponent(c.slice(eq + 1));
+    }
+    return null;
+  },
+  setItem(key, value) {
+    document.cookie = key + '=' + encodeURIComponent(value) + '; path=/; max-age=31536000; SameSite=Lax';
+  },
+  removeItem(key) {
+    document.cookie = key + '=; path=/; max-age=0; SameSite=Lax';
+  }
+};
+
 let sb = null;
-try { sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) { console.error('Supabase init failed:', e); }
+try {
+  sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { storage: cookieStorage, storageKey: 'wtp_auth', persistSession: true, detectSessionInUrl: true, autoRefreshToken: true }
+  });
+} catch(e) { console.error('Supabase init failed:', e); }
 
 /* ========================================================================== */
 /*  APP                                                                       */
@@ -906,10 +929,18 @@ createApp({
       if (partial) partialSession.value = partial;
 
       if (!sb) { authLoading.value = false; return; }
+
+      /* Resolve auth immediately from cookie cache — no network wait */
+      sb.auth.getSession().then(({ data: { session } }) => {
+        currentUser.value = session?.user ?? null;
+        authLoading.value = false;
+        if (session?.user) loadFromSupabase();
+      }).catch(() => { authLoading.value = false; });
+
+      /* Keep listening for magic link sign-ins and token refreshes */
       sb.auth.onAuthStateChange(async (event, session) => {
         const wasLoggedIn = !!currentUser.value;
         currentUser.value = session?.user ?? null;
-        authLoading.value = false;
         if (session?.user && !wasLoggedIn) {
           await loadFromSupabase();
         }
