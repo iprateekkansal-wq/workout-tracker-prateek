@@ -205,11 +205,12 @@ No external CSS framework. All styles are inline in the `<style>` block in `<hea
 2. Update `RELEASE.md` with release notes before requesting approval
 3. **Request explicit approval** before pushing to `main`
 4. Once approved, push to `main` (Vercel auto-deploys)
-5. Create release tag: `git tag -a vYYYY-MM-DD -m "description"`
+5. Update `RELEASE.md` to document what was shipped if not done in step 2
+6. Create release tag: `git tag -a vYYYY-MM-DD -m "description"`
 
 ### Release Documentation
 
-All releases must be documented in `RELEASE.md`. This file tracks:
+**Every change pushed to `main` must be documented in `RELEASE.md` — no exceptions.** Update it before or immediately after every production push. This file tracks:
 - Security updates
 - Bug fixes
 - Features

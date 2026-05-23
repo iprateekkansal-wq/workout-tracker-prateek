@@ -1,6 +1,12 @@
 # Release Notes
 
-## [Unreleased]
+## [2026-05-23]
+
+### Bug Fixes
+- **Fix OTP code input truncating to 6 digits** (commit `27dc597`, 2026-05-23)
+  - Supabase sends 8-digit OTP codes but input was limited to `maxlength="6"`
+  - Users were unable to enter the full code, causing all sign-in attempts to fail
+  - Updated maxlength, placeholder, button validation condition, and instructions to match 8 digits
 
 ### Security
 - **Move Supabase credentials to GitHub Secrets** (commit `6f3fe1b`, 2026-05-23)
