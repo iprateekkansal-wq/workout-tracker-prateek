@@ -944,10 +944,11 @@ createApp({
         if (session?.user) loadFromSupabase();
       }).catch(() => { authLoading.value = false; });
 
-      /* Keep listening for magic link sign-ins and token refreshes */
+      /* Keep listening for sign-ins, token refreshes, and initial session */
       sb.auth.onAuthStateChange(async (event, session) => {
         const wasLoggedIn = !!currentUser.value;
         currentUser.value = session?.user ?? null;
+        if (authLoading.value) authLoading.value = false;
         if (session?.user && !wasLoggedIn) {
           await loadFromSupabase();
         }
