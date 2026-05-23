@@ -866,7 +866,7 @@ const cookieStorage = {
 let sb = null;
 try {
   sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { storage: cookieStorage, storageKey: 'wtp_auth', persistSession: true, detectSessionInUrl: true, autoRefreshToken: true }
+    auth: { storage: cookieStorage, storageKey: 'wtp_auth', persistSession: true, detectSessionInUrl: true, autoRefreshToken: true, flowType: 'implicit' }
   });
 } catch(e) { console.error('Supabase init failed:', e); }
 
