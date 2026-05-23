@@ -10,6 +10,6 @@ jobs:
     steps:
       - name: Ping Supabase
         run: |
-          curl -sf "https://xguorgktfqmnpfrsdesh.supabase.co/rest/v1/health_check?select=updated_at" \
-            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndW9yZ2t0ZnFtbnBmcnNkZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjMwMzcsImV4cCI6MjA5NDkzOTAzN30.ji97HrWP5wXf5U_AbVR5NhQWAOmlPtCSn3LMYDY7_E4" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndW9yZ2t0ZnFtbnBmcnNkZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjMwMzcsImV4cCI6MjA5NDkzOTAzN30.ji97HrWP5wXf5U_AbVR5NhQWAOmlPtCSn3LMYDY7_E4"
+          curl -sf "${{ secrets.SUPABASE_URL }}/rest/v1/health_check?select=updated_at" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
