@@ -3,6 +3,12 @@
 ## [2026-05-23]
 
 ### Bug Fixes
+- **Fix loading screen stuck on PWA page reload after OTP login** (commit `2504dee`, 2026-05-23)
+  - `getSession()` can be slow on page reload (reads from cookie, may check token expiry)
+  - `onAuthStateChange` fires before `getSession()` resolves, setting `currentUser` but not clearing `authLoading`
+  - Result: app was ready but hidden behind loading screen indefinitely
+  - Now clear `authLoading` in `onAuthStateChange` so UI is never blocked waiting for `getSession()`
+
 - **Fix OTP code input truncating to 6 digits** (commit `27dc597`, 2026-05-23)
   - Supabase sends 8-digit OTP codes but input was limited to `maxlength="6"`
   - Users were unable to enter the full code, causing all sign-in attempts to fail
