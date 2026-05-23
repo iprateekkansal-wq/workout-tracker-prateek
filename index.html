@@ -261,14 +261,20 @@
       <div v-if="!authSent">
         <input class="modal-input" type="email" v-model="authEmail" placeholder="your@email.com" @keyup.enter="sendMagicLink" autocomplete="email" style="margin-bottom:12px;">
         <button class="btn btn-primary" @click="sendMagicLink" :disabled="authSending" style="width:100%;">
-          {{ authSending ? 'Sending…' : 'Send Magic Link' }}
+          {{ authSending ? 'Sending…' : 'Send Code' }}
         </button>
       </div>
-      <div v-else style="text-align:center;">
-        <div style="font-size:48px;margin-bottom:12px;">📧</div>
-        <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Check your email</div>
-        <div style="color:var(--text2);font-size:14px;line-height:1.5;">Link sent to <strong style="color:var(--text);">{{ authEmail }}</strong>. Tap it to sign in — you can close this tab.</div>
-        <button class="btn btn-secondary" @click="authSent=false; authEmail=''" style="width:100%;margin-top:20px;">Use different email</button>
+      <div v-else>
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:40px;margin-bottom:8px;">📧</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:4px;">Check your email</div>
+          <div style="color:var(--text2);font-size:13px;">Enter the 6-digit code sent to <strong style="color:var(--text);">{{ authEmail }}</strong></div>
+        </div>
+        <input class="modal-input" type="text" inputmode="numeric" v-model="authCode" placeholder="000000" maxlength="6" @keyup.enter="verifyCode" style="margin-bottom:12px;text-align:center;font-size:24px;font-weight:700;letter-spacing:8px;">
+        <button class="btn btn-primary" @click="verifyCode" :disabled="authSending || authCode.length < 6" style="width:100%;">
+          {{ authSending ? 'Verifying…' : 'Verify Code' }}
+        </button>
+        <button class="btn btn-secondary" @click="authSent=false; authCode=''" style="width:100%;margin-top:10px;">Use different email</button>
       </div>
     </div>
   </div>
@@ -894,6 +900,7 @@ createApp({
     const currentUser = ref(null);
     const authLoading = ref(true);
     const authEmail = ref('');
+    const authCode = ref('');
     const authSending = ref(false);
     const authSent = ref(false);
 
@@ -1440,10 +1447,22 @@ createApp({
       if (!email) return;
       authSending.value = true;
       try {
-        const { error } = await sb.auth.signInWithOtp({ email });
+        const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
         if (error) { alert(error.message); authSending.value = false; return; }
         authSent.value = true;
-      } catch { alert('Could not send link. Check your connection.'); }
+      } catch { alert('Could not send code. Check your connection.'); }
+      authSending.value = false;
+    }
+
+    async function verifyCode() {
+      const email = authEmail.value.trim();
+      const token = authCode.value.trim();
+      if (!email || token.length < 6) return;
+      authSending.value = true;
+      try {
+        const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+        if (error) { alert('Invalid or expired code. Request a new one.'); authSending.value = false; return; }
+      } catch { alert('Could not verify code. Check your connection.'); }
       authSending.value = false;
     }
 
@@ -1452,6 +1471,7 @@ createApp({
       await sb.auth.signOut();
       currentUser.value = null;
       authSent.value = false;
+      authCode.value = '';
       authEmail.value = '';
     }
 
@@ -1688,8 +1708,8 @@ createApp({
       cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
       deleteDetailSession, exportData, triggerImport, importData,
       exerciseChart, importFileInput,
-      currentUser, authLoading, authEmail, authSending, authSent,
-      sendMagicLink, signOut
+      currentUser, authLoading, authEmail, authCode, authSending, authSent,
+      sendMagicLink, verifyCode, signOut
     };
   }
 }).mount('#app');
