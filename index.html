@@ -1246,6 +1246,7 @@ createApp({
       activeSession.value.name = top.length ? top.join(' · ') : 'Workout';
       persistSession();
       pickerSearch.value = '';
+      showExercisePicker.value = false;
     }
 
     function removeBlock(bi) {
