@@ -379,71 +379,34 @@
         <div class="empty-msg">Tap <strong style="color:var(--blue);">+ Add</strong> above to add your first exercise</div>
       </div>
 
-      <div v-for="(block,bi) in activeSession.blocks" :key="bi" class="block" :class="{done:block.done}">
+      <div v-for="(block,bi) in activeSession.blocks" :key="bi" class="block" :class="{done:block.done}"
+           @click="editBlock(bi)" style="cursor:pointer;">
 
-        <!-- EXERCISE -->
+        <!-- EXERCISE (compact) -->
         <template v-if="block.type==='exercise'">
-          <div class="block-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
-            <div>
+          <div class="block-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;">
+            <div style="flex:1;min-width:0;">
               <div class="block-name">{{ exerciseName(block.exercise_key) }}</div>
-              <div class="block-sub">{{ block.sets.length }} sets</div>
+              <div class="block-sub" v-if="block.done">
+                {{ block.sets.filter(s=>s.done).map(s=>(s.weight!=null?s.weight+'kg×':'')+s.reps).join(' · ') }}
+              </div>
+              <div class="block-sub" v-else>{{ block.sets.length }} sets · tap to log</div>
             </div>
-            <button v-if="!block.done" @click="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;margin-top:-2px;">×</button>
-          </div>
-          <div v-for="h in getRecentSessionsForExercise(block.exercise_key)" :key="h.date"
-               @click="navigate('exercise-detail',{key:block.exercise_key})"
-               style="margin:0 18px;padding:6px 0;display:flex;align-items:center;gap:10px;border-top:1px solid var(--card2);cursor:pointer;">
-            <span style="font-size:11px;font-weight:600;color:var(--text3);min-width:58px;">{{ relativeDate(h.date) }}</span>
-            <span style="font-size:12px;color:var(--text2);">{{ h.sets.map(s => (s.weight!=null?s.weight+'kg×':'')+s.reps).join(' · ') }}</span>
-            <span style="margin-left:auto;font-size:16px;color:var(--text3);">›</span>
-          </div>
-          <div class="block-body">
-            <div v-for="(s,si) in block.sets" :key="si" class="set-row" :class="{logged:s.done}">
-              <div class="set-num">{{ si+1 }}</div>
-              <template v-if="!exerciseIsBodyweight(block.exercise_key)">
-                <input class="set-input" type="number" inputmode="decimal" v-model.number="s.weight" :placeholder="s.prefillWeight || '–'" @change="persistSession">
-                <span class="set-unit">kg</span>
-                <span class="set-x">×</span>
-              </template>
-              <input class="set-input" type="number" inputmode="numeric" v-model.number="s.reps" :placeholder="block.targetReps || '–'" @change="persistSession">
-              <span class="set-unit">{{ block.targetSeconds ? 'sec' : 'rep' }}</span>
-            </div>
-            <div v-if="!block.done" class="add-remove">
-              <button @click="removeSet(bi)" :disabled="block.sets.length <= 1">– Set</button>
-              <button @click="addSet(bi)">+ Set</button>
-            </div>
-          </div>
-          <div class="block-actions">
-            <button v-if="!block.done" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
-            <button v-if="block.done" class="block-action-btn success" disabled>✓ Done</button>
-            <button v-if="block.done" class="block-action-btn" @click="editBlock(bi)">Edit</button>
+            <div v-if="block.done" style="color:var(--green);font-size:20px;font-weight:700;margin-left:12px;">✓</div>
+            <button v-else @click.stop="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
           </div>
         </template>
 
-        <!-- CARDIO -->
+        <!-- CARDIO (compact) -->
         <template v-else-if="block.type==='cardio'">
-          <div class="block-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
-            <div>
+          <div class="block-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;">
+            <div style="flex:1;">
               <div class="block-name">🚶 {{ exerciseName(block.exercise_key) }}</div>
-              <div class="block-sub">Log your cardio</div>
+              <div class="block-sub" v-if="block.done">{{ block.actualMinutes }}min{{ block.speed ? ' · ' + block.speed + 'km/h' : '' }}</div>
+              <div class="block-sub" v-else>Tap to log</div>
             </div>
-            <button v-if="!block.done" @click="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;margin-top:-2px;">×</button>
-          </div>
-          <div class="block-body">
-            <div class="cardio-input">
-              <div class="cardio-field">
-                <label>Minutes</label>
-                <input type="number" v-model.number="block.actualMinutes" placeholder="–" @change="persistSession">
-              </div>
-              <div class="cardio-field">
-                <label>Speed (km/h)</label>
-                <input type="number" step="0.1" v-model.number="block.speed" placeholder="—" @change="persistSession">
-              </div>
-            </div>
-          </div>
-          <div class="block-actions">
-            <button v-if="!block.done" class="block-action-btn primary" @click="markBlockDone(bi)">Done</button>
-            <button v-if="block.done" class="block-action-btn success" disabled>✓ Done</button>
+            <div v-if="block.done" style="color:var(--green);font-size:20px;font-weight:700;margin-left:12px;">✓</div>
+            <button v-else @click.stop="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
           </div>
         </template>
 
@@ -456,6 +419,100 @@
         <button class="btn btn-primary" @click="finishSession" :disabled="!sessionCanFinish">
           {{ allBlocksDone ? 'Finish Session 🎉' : 'Finish Early' }}
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= LOG EXERCISE SCREEN ========= -->
+  <div v-if="screen==='log-exercise' && loggingBlock" class="screen no-nav">
+    <div class="screen-header-nav">
+      <button class="back-btn" @click="goBack">‹ Session</button>
+      <h2 style="font-size:17px;">{{ exerciseName(loggingBlock.exercise_key) }}</h2>
+      <div style="min-width:60px;"></div>
+    </div>
+    <div class="content">
+
+      <template v-if="loggingBlock.type==='exercise'">
+        <!-- Blob 1: Previous sessions -->
+        <div v-if="getRecentSessionsForExercise(loggingBlock.exercise_key).length" class="card" style="margin-bottom:12px;overflow:hidden;">
+          <div style="padding:10px 18px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;">Previous</div>
+          <div v-for="h in getRecentSessionsForExercise(loggingBlock.exercise_key)" :key="h.date"
+               @click="openChartSheet(loggingBlock.exercise_key)"
+               class="row row-tap" style="padding:8px 18px;">
+            <span style="font-size:12px;font-weight:600;color:var(--text3);min-width:64px;">{{ relativeDate(h.date) }}</span>
+            <span style="font-size:13px;color:var(--text2);">{{ h.sets.map(s=>(s.weight!=null?s.weight+'kg×':'')+s.reps).join(' · ') }}</span>
+            <span style="margin-left:auto;font-size:16px;color:var(--text3);">›</span>
+          </div>
+        </div>
+
+        <!-- Blob 2: Log inputs -->
+        <div class="card">
+          <div class="block-body">
+            <div v-for="(s,si) in loggingBlock.sets" :key="si" class="set-row" :class="{logged:s.done}">
+              <div class="set-num">{{ si+1 }}</div>
+              <template v-if="!exerciseIsBodyweight(loggingBlock.exercise_key)">
+                <input class="set-input" type="number" inputmode="decimal" v-model.number="s.weight" :placeholder="s.prefillWeight||'–'" @change="persistSession">
+                <span class="set-unit">kg</span>
+                <span class="set-x">×</span>
+              </template>
+              <input class="set-input" type="number" inputmode="numeric" v-model.number="s.reps" :placeholder="loggingBlock.targetReps||'–'" @change="persistSession">
+              <span class="set-unit">{{ loggingBlock.targetSeconds ? 'sec' : 'rep' }}</span>
+            </div>
+            <div class="add-remove">
+              <button @click="removeSet(screenParams.bi)" :disabled="loggingBlock.sets.length<=1">– Set</button>
+              <button @click="addSet(screenParams.bi)">+ Set</button>
+            </div>
+          </div>
+          <div class="block-actions">
+            <button class="block-action-btn primary" @click="markBlockDone(screenParams.bi); goBack()">Done</button>
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="loggingBlock.type==='cardio'">
+        <div class="card">
+          <div class="block-body">
+            <div class="cardio-input">
+              <div class="cardio-field">
+                <label>Minutes</label>
+                <input type="number" v-model.number="loggingBlock.actualMinutes" placeholder="–" @change="persistSession">
+              </div>
+              <div class="cardio-field">
+                <label>Speed (km/h)</label>
+                <input type="number" step="0.1" v-model.number="loggingBlock.speed" placeholder="–" @change="persistSession">
+              </div>
+            </div>
+          </div>
+          <div class="block-actions">
+            <button class="block-action-btn primary" @click="markBlockDone(screenParams.bi); goBack()">Done</button>
+          </div>
+        </div>
+      </template>
+
+    </div>
+  </div>
+
+  <!-- ========= CHART SHEET (over log-exercise) ========= -->
+  <div v-if="showChartSheet" style="position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;">
+    <div class="screen-header-nav">
+      <button class="back-btn" @click="closeChartSheet">‹ Back</button>
+      <h2 style="font-size:17px;">{{ chartSheetExercise ? chartSheetExercise.name : '' }}</h2>
+      <div style="min-width:60px;"></div>
+    </div>
+    <div class="content" style="flex:1;overflow-y:auto;">
+      <div v-if="chartSheetExercise">
+        <div class="section-label">Top Set · {{ chartSheetExercise.group }}</div>
+        <div class="chart-wrap"><canvas ref="loggingChart"></canvas></div>
+        <div class="section-label">Recent Sessions</div>
+        <div v-if="!chartSheetRecentSessions.length" class="card card-pad muted small">No history yet.</div>
+        <div v-else class="card">
+          <div v-for="r in chartSheetRecentSessions" :key="r.sessionId" class="row">
+            <div class="grow">
+              <div style="font-weight:600;">{{ relativeDate(r.date) }}</div>
+              <div class="row-detail">{{ r.setsSummary }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -920,6 +977,12 @@ createApp({
     const pickerSearch = ref('');
     const pickerFilter = ref('all');
 
+    /* Chart sheet (opened from log-exercise screen) */
+    const showChartSheet = ref(false);
+    const chartSheetKey = ref(null);
+    const loggingChart = ref(null);
+    let loggingChartInstance = null;
+
     /* Retro session */
     const showRetroPicker = ref(false);
     const retroDate = ref(todayStr());
@@ -1143,6 +1206,33 @@ createApp({
       return result.slice(0, 15);
     });
 
+    const loggingBlock = computed(() => {
+      if (screen.value !== 'log-exercise' || screenParams.value.bi == null) return null;
+      return activeSession.value?.blocks[screenParams.value.bi] ?? null;
+    });
+    const chartSheetExercise = computed(() => {
+      if (!chartSheetKey.value) return null;
+      const ex = exercises.value.find(e => e.key === chartSheetKey.value);
+      if (!ex) return null;
+      return { ...ex, group: groupLabel(ex.group) };
+    });
+    const chartSheetRecentSessions = computed(() => {
+      if (!chartSheetKey.value) return [];
+      const key = chartSheetKey.value;
+      const result = [];
+      [...completedSessions.value].sort((a,b) => b.date.localeCompare(a.date)).forEach(s => {
+        s.blocks.forEach(b => {
+          if (b.type === 'exercise' && b.exercise_key === key) {
+            const logged = b.sets.filter(x => x.done);
+            if (!logged.length) return;
+            const summary = logged.map(x => (x.weight != null ? x.weight + 'kg×' : '') + x.reps).join(' · ');
+            result.push({ sessionId: s.id, date: s.date, setsSummary: summary });
+          }
+        });
+      });
+      return result.slice(0, 15);
+    });
+
     /* ---------- FILTERED LIBRARY ---------- */
     const filteredLibrary = computed(() => {
       const list = libFilter.value === 'all' ? exercises.value : exercises.value.filter(e => e.group === libFilter.value);
@@ -1279,6 +1369,7 @@ createApp({
       persistSession();
       pickerSearch.value = '';
       showExercisePicker.value = false;
+      navigate('log-exercise', { bi: activeSession.value.blocks.length - 1 });
     }
 
     function removeBlock(bi) {
@@ -1381,11 +1472,7 @@ createApp({
       persistSession();
     }
     function editBlock(bi) {
-      const block = activeSession.value.blocks[bi];
-      block.done = false;
-      block.skipped = false;
-      activeBlockIndex.value = bi;
-      persistSession();
+      navigate('log-exercise', { bi });
     }
     function skipBlock(bi) {
       const block = activeSession.value.blocks[bi];
@@ -1582,6 +1669,42 @@ createApp({
       goBack();
     }
 
+    /* ---------- CHART SHEET ---------- */
+    function openChartSheet(key) {
+      chartSheetKey.value = key;
+      showChartSheet.value = true;
+      nextTick(renderLoggingChart);
+    }
+    function closeChartSheet() {
+      if (loggingChartInstance) { loggingChartInstance.destroy(); loggingChartInstance = null; }
+      showChartSheet.value = false;
+      chartSheetKey.value = null;
+    }
+    function renderLoggingChart() {
+      if (!loggingChart.value || !chartSheetExercise.value) return;
+      const key = chartSheetExercise.value.key;
+      const ex = exercises.value.find(e => e.key === key);
+      const data = [];
+      [...completedSessions.value].sort((a,b) => a.date.localeCompare(b.date)).forEach(s => {
+        s.blocks.forEach(b => {
+          if (b.type === 'exercise' && b.exercise_key === key && b.sets[0] && b.sets[0].done) {
+            const val = ex.timeBased ? b.sets[0].reps : (ex.bodyweight ? b.sets[0].reps : b.sets[0].weight);
+            const target = b.targetReps || b.targetSeconds;
+            data.push({ x: s.date, y: val, flagged: target && b.sets[0].reps < target });
+          }
+        });
+      });
+      if (loggingChartInstance) { loggingChartInstance.destroy(); loggingChartInstance = null; }
+      if (!data.length) return;
+      const ctx = loggingChart.value.getContext('2d');
+      const unitLabel = ex.timeBased ? 'seconds' : (ex.bodyweight ? 'reps' : 'kg');
+      loggingChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: data.map(d => d.x.slice(5)), datasets: [{ label: unitLabel, data: data.map(d => d.y), borderColor: '#ff9500', backgroundColor: 'rgba(255,149,0,0.12)', fill: true, tension: 0.3, pointBackgroundColor: data.map(d => d.flagged ? '#ffd60a' : '#ff9500'), pointRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8e8e93', font:{size:10} }, grid:{ color:'#2c2c2e' } }, y: { ticks: { color: '#8e8e93', font:{size:10} }, grid:{ color:'#2c2c2e' }, beginAtZero:false } } }
+      });
+    }
+
     /* ---------- NAVIGATION ---------- */
     function navigate(s, params) {
       if (screen.value !== s) screenHistory.value.push(screen.value);
@@ -1738,6 +1861,7 @@ createApp({
       navigate, goBack,
       startNewSession, startRetroSession, resumeSession,
       addExerciseToSession, isInSession, removeBlock, createExercise, getRecentSessionsForExercise,
+      loggingBlock, showChartSheet, chartSheetExercise, chartSheetRecentSessions, loggingChart, openChartSheet, closeChartSheet,
       addSet, removeSet, markBlockDone, editBlock, persistSession,
       cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
       deleteDetailSession, exportData, triggerImport, importData,
