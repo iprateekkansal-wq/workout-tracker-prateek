@@ -3,6 +3,11 @@
 ## [2026-05-25]
 
 ### Improvements
+- **Per-set prefill from last session** (commit `b95643d`, 2026-05-25)
+  - Each set is now prefilled with the corresponding set from the last session (set 1 → last set 1, set 2 → last set 2, etc.)
+  - If last session had fewer than 3 sets, the last set's values are reused for remaining sets
+  - Falls back to previous behaviour if no history exists for that exercise
+
 - **Close exercise picker on tap** (commit `0831c73`, 2026-05-25)
   - Tapping an exercise now closes the picker immediately and returns to the session screen
   - Previously required manually closing the picker after adding an exercise
