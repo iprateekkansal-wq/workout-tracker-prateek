@@ -3,6 +3,11 @@
 ## [2026-05-25]
 
 ### Improvements
+- **Show last 3 sessions history in exercise block** (commit `9f33a61`, 2026-05-25)
+  - Each exercise block now shows up to 3 recent sessions above the inputs
+  - Format: date · set1weight×reps · set2weight×reps · set3weight×reps
+  - Tapping any history row navigates to the exercise progression graph
+
 - **Per-set prefill from last session** (commit `b95643d`, 2026-05-25)
   - Each set is now prefilled with the corresponding set from the last session (set 1 → last set 1, set 2 → last set 2, etc.)
   - If last session had fewer than 3 sets, the last set's values are reused for remaining sets
