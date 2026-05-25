@@ -3,6 +3,12 @@
 ## [2026-05-25]
 
 ### Improvements
+- **Focused log-exercise screen** (commit `40d6a6d`, 2026-05-25)
+  - Selecting an exercise from the picker navigates directly to a focused logging screen — no extra tap
+  - Session list shows compact blocks: done exercises show logged set summary (e.g. 45kg×11 · 40kg×12), undone show "tap to log"
+  - Logging screen has two blobs: previous sessions (tappable → progression chart) and set inputs + Done
+  - Progression chart opens as a full-screen overlay; back returns to logging screen
+
 - **Show last 3 sessions history in exercise block** (commit `9f33a61`, 2026-05-25)
   - Each exercise block now shows up to 3 recent sessions above the inputs
   - Format: date · set1weight×reps · set2weight×reps · set3weight×reps
