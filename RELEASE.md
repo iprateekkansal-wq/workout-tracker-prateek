@@ -3,6 +3,13 @@
 ## [2026-05-25]
 
 ### Improvements
+- **Focused logging modal with chart sheet** (commit `7868c82`, 2026-05-25)
+  - Session blocks are now compact (exercise name + summary only)
+  - Tapping any block opens a focused bottom sheet for logging
+  - Sheet has two sections: previous sessions history (blob 1) and set inputs (blob 2)
+  - Tapping a history row opens the progression chart as a second sheet on top
+  - Back from chart returns to logging modal without losing context
+
 - **Show last 3 sessions history in exercise block** (commit `9f33a61`, 2026-05-25)
   - Each exercise block now shows up to 3 recent sessions above the inputs
   - Format: date · set1weight×reps · set2weight×reps · set3weight×reps
