@@ -1,5 +1,14 @@
 # Release Notes
 
+## [2026-05-25]
+
+### Improvements
+- **Close exercise picker on tap** (commit `0831c73`, 2026-05-25)
+  - Tapping an exercise now closes the picker immediately and returns to the session screen
+  - Previously required manually closing the picker after adding an exercise
+
+---
+
 ## [2026-05-23]
 
 ### Bug Fixes
