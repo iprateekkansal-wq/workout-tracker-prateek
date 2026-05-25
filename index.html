@@ -1195,6 +1195,18 @@ createApp({
       }
       return 10;
     }
+    function getLastSessionSets(exKey) {
+      const sorted = [...completedSessions.value].sort((a,b) => b.date.localeCompare(a.date));
+      for (const s of sorted) {
+        for (const b of s.blocks) {
+          if (b.type === 'exercise' && b.exercise_key === exKey) {
+            const done = b.sets.filter(x => x.done);
+            if (done.length) return done.slice(0, 3).map(x => ({ weight: x.weight ?? null, reps: x.reps ?? 10 }));
+          }
+        }
+      }
+      return null;
+    }
 
     /* ---------- EXERCISE PICKER ---------- */
     const filteredPickerLibrary = computed(() => {
@@ -1219,20 +1231,18 @@ createApp({
       if (!activeSession.value) return;
       const ex = exercises.value.find(e => e.key === key);
       if (!ex) return;
-      const prefillWeight = getPrefillWeight(key);
-      const prefillReps = getPrefillReps(key);
+      const lastSets = getLastSessionSets(key);
+      const fallbackReps = getPrefillReps(key);
       const block = ex.type === 'cardio'
         ? { type: 'cardio', exercise_key: key, done: false }
         : {
             type: 'exercise',
             exercise_key: key,
-            sets: Array.from({ length: 3 }, () => ({
-              weight: prefillWeight,
-              prefillWeight: prefillWeight,
-              reps: prefillReps,
-              done: false
-            })),
-            targetReps: prefillReps,
+            sets: Array.from({ length: 3 }, (_, i) => {
+              const ref = lastSets ? (lastSets[i] || lastSets[lastSets.length - 1]) : null;
+              return { weight: ref?.weight ?? null, prefillWeight: ref?.weight ?? null, reps: ref?.reps ?? fallbackReps, done: false };
+            }),
+            targetReps: lastSets ? lastSets[0].reps : fallbackReps,
             done: false
           };
       activeSession.value.blocks.push(block);
