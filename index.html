@@ -548,6 +548,9 @@
     </div>
     <div v-if="detailSession" class="content">
       <div class="section-label">{{ relativeDate(detailSession.date) }}</div>
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-secondary" style="width:100%;" @click="reopenSession">Reopen Session</button>
+      </div>
       <div v-for="(block,bi) in detailSession.blocks" :key="bi" class="card">
         <template v-if="block.type==='exercise'">
           <div class="row">
@@ -969,6 +972,7 @@ createApp({
     const activeSession = ref(null);
     const activeBlockIndex = ref(0);
     const partialSession = ref(null);
+    const editingCompleted = ref(false);  // true when the active session is a reopened, already-completed one
 
     /* Exercise picker (in-session) */
     const showExercisePicker = ref(false);
@@ -1600,6 +1604,18 @@ createApp({
 
     function cancelOrPauseSession() {
       if (!activeSession.value) return;
+      // Backing out of a reopened, already-completed session: keep it completed,
+      // just re-evaluate the partial flag against any edits. Never demote to in-progress.
+      if (editingCompleted.value) {
+        const s = activeSession.value;
+        const exBlocks = s.blocks.filter(b => b.type === 'exercise');
+        s.isPartial = !(exBlocks.every(b => b.sets.some(x => x.done)) && s.blocks.every(b => b.done));
+        persistSession();
+        editingCompleted.value = false;
+        activeSession.value = null;
+        screen.value = 'home';
+        return;
+      }
       const anyLogged = activeSession.value.blocks.some(b => b.done);
       if (!anyLogged) {
         sessions.value = sessions.value.filter(s => s.id !== activeSession.value.id);
@@ -1618,6 +1634,7 @@ createApp({
 
     function finishSession() {
       const s = activeSession.value;
+      editingCompleted.value = false;
       s.completed_at = new Date().toISOString();
       s.inProgress = false;
       const exBlocks = s.blocks.filter(b => b.type === 'exercise');
@@ -1669,6 +1686,19 @@ createApp({
       save(LS.sessions, sessions.value);
       deleteSessionFromSupabase(id);
       goBack();
+    }
+    function reopenSession() {
+      if (activeSession.value) {
+        alert('Finish your current session first before reopening this one.');
+        return;
+      }
+      if (!confirm('Reopen this session to add or edit exercises?')) return;
+      // Keep the session in its completed state while editing — completion flags are
+      // only re-evaluated when the user finishes or backs out, so a reopened-but-
+      // unchanged session is never demoted or stripped of its completion timestamp.
+      editingCompleted.value = true;
+      activeSession.value = detailSession.value;
+      screen.value = 'session';
     }
 
     /* ---------- CHART SHEET ---------- */
@@ -1866,7 +1896,7 @@ createApp({
       loggingBlock, showChartSheet, chartSheetExercise, chartSheetRecentSessions, loggingChart, openChartSheet, closeChartSheet,
       addSet, removeSet, markBlockDone, editBlock, persistSession,
       cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
-      deleteDetailSession, exportData, triggerImport, importData,
+      deleteDetailSession, reopenSession, exportData, triggerImport, importData,
       exerciseChart, importFileInput,
       currentUser, authLoading, authEmail, authCode, authSending, authSent,
       sendMagicLink, verifyCode, signOut

@@ -1,5 +1,15 @@
 # Release Notes
 
+## [2026-06-02]
+
+### Improvements
+- **Reopen a completed session to add exercises retrospectively** (commit pending, 2026-06-02)
+  - Completed sessions now show a "Reopen Session" button in the detail view — opens the session in the editable session screen so a forgotten exercise can be added after the fact
+  - The session keeps its completed status and original completion timestamp the entire time it is being edited; the flags are only re-evaluated on exit, so a session that is reopened and backed out of is never demoted or stripped of its timestamp
+  - Reopening is blocked if another session is already active, with an alert explaining why
+
+---
+
 ## [2026-05-25]
 
 ### Improvements
