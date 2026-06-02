@@ -3,6 +3,10 @@
 ## [2026-05-25]
 
 ### Improvements
+- **Two UX improvements to logging flow** (commit `f57e6f5`, 2026-05-25)
+  - Weight/rep fields now select all text on focus — tap to immediately overwrite, no manual erase needed
+  - Done exercise blocks now show × with a confirmation dialog before deleting logged data
+
 - **Focused log-exercise screen** (commit `40d6a6d`, 2026-05-25)
   - Selecting an exercise from the picker navigates directly to a focused logging screen — no extra tap
   - Session list shows compact blocks: done exercises show logged set summary (e.g. 45kg×11 · 40kg×12), undone show "tap to log"
