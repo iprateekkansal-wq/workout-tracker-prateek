@@ -392,8 +392,7 @@
               </div>
               <div class="block-sub" v-else>{{ block.sets.length }} sets · tap to log</div>
             </div>
-            <div v-if="block.done" style="color:var(--green);font-size:20px;font-weight:700;margin-left:12px;">✓</div>
-            <button v-else @click.stop="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
+            <button @click.stop="block.done ? confirmRemoveBlock(bi) : removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
           </div>
         </template>
 
@@ -405,8 +404,7 @@
               <div class="block-sub" v-if="block.done">{{ block.actualMinutes }}min{{ block.speed ? ' · ' + block.speed + 'km/h' : '' }}</div>
               <div class="block-sub" v-else>Tap to log</div>
             </div>
-            <div v-if="block.done" style="color:var(--green);font-size:20px;font-weight:700;margin-left:12px;">✓</div>
-            <button v-else @click.stop="removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
+            <button @click.stop="block.done ? confirmRemoveBlock(bi) : removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
           </div>
         </template>
 
@@ -451,11 +449,11 @@
             <div v-for="(s,si) in loggingBlock.sets" :key="si" class="set-row" :class="{logged:s.done}">
               <div class="set-num">{{ si+1 }}</div>
               <template v-if="!exerciseIsBodyweight(loggingBlock.exercise_key)">
-                <input class="set-input" type="number" inputmode="decimal" v-model.number="s.weight" :placeholder="s.prefillWeight||'–'" @change="persistSession">
+                <input class="set-input" type="number" inputmode="decimal" v-model.number="s.weight" :placeholder="s.prefillWeight||'–'" @focus="$event.target.select()" @change="persistSession">
                 <span class="set-unit">kg</span>
                 <span class="set-x">×</span>
               </template>
-              <input class="set-input" type="number" inputmode="numeric" v-model.number="s.reps" :placeholder="loggingBlock.targetReps||'–'" @change="persistSession">
+              <input class="set-input" type="number" inputmode="numeric" v-model.number="s.reps" :placeholder="loggingBlock.targetReps||'–'" @focus="$event.target.select()" @change="persistSession">
               <span class="set-unit">{{ loggingBlock.targetSeconds ? 'sec' : 'rep' }}</span>
             </div>
             <div class="add-remove">
@@ -1377,6 +1375,10 @@ createApp({
       activeSession.value.blocks.splice(bi, 1);
       persistSession();
     }
+    function confirmRemoveBlock(bi) {
+      const name = exerciseName(activeSession.value.blocks[bi].exercise_key);
+      if (confirm(`Remove "${name}" and its logged data?`)) removeBlock(bi);
+    }
 
     /* ---------- SESSION START ---------- */
     function startNewSession() {
@@ -1860,7 +1862,7 @@ createApp({
       dayOf, monthOf, countLoggedExercises, historyExerciseSummary,
       navigate, goBack,
       startNewSession, startRetroSession, resumeSession,
-      addExerciseToSession, isInSession, removeBlock, createExercise, getRecentSessionsForExercise,
+      addExerciseToSession, isInSession, removeBlock, confirmRemoveBlock, createExercise, getRecentSessionsForExercise,
       loggingBlock, showChartSheet, chartSheetExercise, chartSheetRecentSessions, loggingChart, openChartSheet, closeChartSheet,
       addSet, removeSet, markBlockDone, editBlock, persistSession,
       cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
