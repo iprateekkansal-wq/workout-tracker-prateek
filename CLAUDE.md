@@ -196,16 +196,20 @@ No external CSS framework. All styles are inline in the `<style>` block in `<hea
 ### Development
 
 - **Develop on**: `claude/workout-tracking-app-u2CAV`
-- **Main branch**: Production (`main`). Auto-deploys via Vercel. **Never push without explicit approval.**
+- **Main branch**: Production (`main`). Auto-deploys via Vercel.
 - **Versions & tags**: Tag stable releases with `git tag -a vYYYY-MM-DD -m "description"`
+
+### Push Approval Rule
+
+**NEVER run `git push` under any circumstances without the user explicitly approving in the current conversation turn.** Approval must be a clear message such as "yes", "go ahead", "push it", or "approved". Confidence in the change, size of the change, or urgency are NOT valid reasons to skip approval. If in doubt, ask. This rule has no exceptions.
 
 ### Release Steps
 
 1. Develop and test changes on `claude/workout-tracking-app-u2CAV`
-2. Update `RELEASE.md` with release notes before requesting approval
-3. **Request explicit approval** before pushing to `main`
-4. Once approved, push to `main` (Vercel auto-deploys)
-5. Update `RELEASE.md` to document what was shipped if not done in step 2
+2. Update `RELEASE.md` with release notes
+3. Commit locally
+4. **Ask for explicit approval** — do not push until the user approves in the current turn
+5. Once approved, push to `main` (Vercel auto-deploys)
 6. Create release tag: `git tag -a vYYYY-MM-DD -m "description"`
 
 ### Release Documentation
