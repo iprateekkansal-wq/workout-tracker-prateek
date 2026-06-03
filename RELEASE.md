@@ -1,5 +1,15 @@
 # Release Notes
 
+## [2026-06-03]
+
+### Bug Fixes
+- **Discard draft/partial sessions from the home screen** (commit pending, 2026-06-03)
+  - Draft sessions (started but backed out of) now show a red "Discard" button alongside "Resume" in the banner
+  - Discard confirms, then permanently deletes the session from localStorage and Supabase — no more stuck draft logs
+  - Fixed a secondary bug: starting a new session while a draft banner existed silently orphaned the draft in localStorage without deleting it; it now cleans up the old draft first
+
+---
+
 ## [2026-06-02]
 
 ### Improvements

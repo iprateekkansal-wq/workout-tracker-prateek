@@ -310,6 +310,7 @@
           <strong>{{ partialSession.name || 'Session' }} in progress</strong><br>
           <small class="muted">{{ relativeDate(partialSession.date) }} · Continue where you left off</small>
         </div>
+        <button class="btn-sm btn-sm-red" @click="discardPartialSession" style="margin-right:6px;">Discard</button>
         <button class="btn-sm btn-sm-blue" @click="resumeSession">Resume</button>
       </div>
 
@@ -1386,6 +1387,12 @@ createApp({
 
     /* ---------- SESSION START ---------- */
     function startNewSession() {
+      if (partialSession.value) {
+        const id = partialSession.value.id;
+        sessions.value = sessions.value.filter(s => s.id !== id);
+        deleteSessionFromSupabase(id);
+        partialSession.value = null;
+      }
       const session = {
         id: uuid(),
         date: todayStr(),
@@ -1399,7 +1406,6 @@ createApp({
       activeSession.value = session;
       sessions.value.push(session);
       save(LS.sessions, sessions.value);
-      partialSession.value = null;
       screen.value = 'session';
       showExercisePicker.value = true;
     }
@@ -1429,6 +1435,14 @@ createApp({
     function resumeSession() {
       activeSession.value = partialSession.value;
       screen.value = 'session';
+    }
+    function discardPartialSession() {
+      if (!confirm('Discard this draft session? All logged data will be deleted.')) return;
+      const id = partialSession.value.id;
+      sessions.value = sessions.value.filter(s => s.id !== id);
+      save(LS.sessions, sessions.value);
+      deleteSessionFromSupabase(id);
+      partialSession.value = null;
     }
 
     /* ---------- CREATE EXERCISE ---------- */
@@ -1891,7 +1905,7 @@ createApp({
       exerciseName, exerciseIsBodyweight, groupLabel, relativeDate,
       dayOf, monthOf, countLoggedExercises, historyExerciseSummary,
       navigate, goBack,
-      startNewSession, startRetroSession, resumeSession,
+      startNewSession, startRetroSession, resumeSession, discardPartialSession,
       addExerciseToSession, isInSession, removeBlock, confirmRemoveBlock, createExercise, getRecentSessionsForExercise,
       loggingBlock, showChartSheet, chartSheetExercise, chartSheetRecentSessions, loggingChart, openChartSheet, closeChartSheet,
       addSet, removeSet, markBlockDone, editBlock, persistSession,
