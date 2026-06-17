@@ -520,6 +520,13 @@
   <div v-if="screen==='history'" class="screen">
     <div class="screen-header"><h1>History</h1></div>
     <div class="content">
+      <div class="stat-grid mb12" style="grid-template-columns:repeat(4,1fr);">
+        <div v-for="m in historyMuscleStats" :key="m.key" class="stat-card" style="text-align:center;padding:12px 6px;">
+          <div class="stat-label" style="font-size:10px;">{{ m.label }}</div>
+          <div class="stat-value" style="font-size:24px;">{{ m.count }}</div>
+          <div class="stat-sub">sessions</div>
+        </div>
+      </div>
       <div v-if="!completedSessions.length" class="empty">
         <div class="empty-icon">📋</div>
         <div class="empty-msg">No sessions yet. Tap + New Session on Home to start.</div>
@@ -1062,6 +1069,25 @@ createApp({
 
     /* ---------- COMPUTED: LAST SESSION ---------- */
     const lastSession = computed(() => sessionsByDate.value[0] || null);
+
+    /* ---------- COMPUTED: HISTORY MUSCLE STATS ---------- */
+    const historyMuscleStats = computed(() => {
+      const keys = ['chest', 'back', 'shoulders', 'legs'];
+      const counts = { chest: 0, back: 0, shoulders: 0, legs: 0 };
+      completedSessions.value.forEach(s => {
+        const seenGroups = new Set();
+        s.blocks.forEach(b => {
+          if (b.type !== 'exercise') return;
+          const ex = exercises.value.find(e => e.key === b.exercise_key);
+          if (!ex || !counts.hasOwnProperty(ex.group)) return;
+          if (b.sets.some(x => x.done) && !seenGroups.has(ex.group)) {
+            seenGroups.add(ex.group);
+            counts[ex.group]++;
+          }
+        });
+      });
+      return keys.map(k => ({ key: k, label: k.charAt(0).toUpperCase() + k.slice(1), count: counts[k] }));
+    });
 
     /* ---------- COMPUTED: STATS ---------- */
     const weekStats = computed(() => {
@@ -1895,7 +1921,7 @@ createApp({
       showRetroPicker, retroDate, todayDateStr: todayStr(),
       showCreateExercise, newExName, newExGroup, newExBodyweight,
       muscleGroups: MUSCLE_GROUPS,
-      completedSessions, streak, lastSession, sessionsByDate,
+      completedSessions, streak, lastSession, sessionsByDate, historyMuscleStats,
       weekStats, monthStats, heatmap, heatmapTotal,
       exerciseProgression, topCallout, muscleGroupCoverage,
       sessionProgressPct, allBlocksDone, sessionCanFinish,
