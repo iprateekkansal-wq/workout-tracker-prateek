@@ -34,6 +34,15 @@
 
 ---
 
+## [2026-06-17]
+
+### Improvements
+- **Muscle group workout counts in History** (PR #history-muscle-stats)
+  - Four stat cards (Chest · Back · Shoulders · Legs) at the top of the History screen show how many sessions included at least one logged exercise for each group — all-time count
+  - Each session counts once per group regardless of how many exercises for that group were logged in the session
+
+---
+
 ## [2026-05-25]
 
 ### Improvements
