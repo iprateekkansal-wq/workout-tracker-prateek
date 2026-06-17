@@ -1388,6 +1388,7 @@ createApp({
     /* ---------- SESSION START ---------- */
     function startNewSession() {
       if (partialSession.value) {
+        if (!confirm('You have an unfinished session. Starting a new one will discard it. Continue?')) return;
         const id = partialSession.value.id;
         sessions.value = sessions.value.filter(s => s.id !== id);
         deleteSessionFromSupabase(id);
@@ -1412,6 +1413,13 @@ createApp({
 
     function startRetroSession() {
       if (!retroDate.value) return;
+      if (partialSession.value) {
+        if (!confirm('You have an unfinished session. Starting a new one will discard it. Continue?')) return;
+        const id = partialSession.value.id;
+        sessions.value = sessions.value.filter(s => s.id !== id);
+        deleteSessionFromSupabase(id);
+        partialSession.value = null;
+      }
       const session = {
         id: uuid(),
         date: retroDate.value,
@@ -1426,7 +1434,6 @@ createApp({
       activeSession.value = session;
       sessions.value.push(session);
       save(LS.sessions, sessions.value);
-      partialSession.value = null;
       showRetroPicker.value = false;
       screen.value = 'session';
       showExercisePicker.value = true;
@@ -1434,6 +1441,7 @@ createApp({
 
     function resumeSession() {
       activeSession.value = partialSession.value;
+      partialSession.value = null;  // it's now the active session; clear so banner disappears on finish
       screen.value = 'session';
     }
     function discardPartialSession() {
@@ -1513,8 +1521,10 @@ createApp({
     }
 
     /* ---------- SUPABASE SYNC ---------- */
+    let syncInProgress = false;
     async function loadFromSupabase() {
-      if (!currentUser.value) return;
+      if (!currentUser.value || syncInProgress) return;
+      syncInProgress = true;
       try {
         const [{ data: remoteSessions }, { data: remoteExercises }] = await Promise.all([
           sb.from('sessions').select('*'),
@@ -1551,6 +1561,8 @@ createApp({
         exercises.value.forEach(e => { if (!remoteKeys.has(e.key) && !seedKeys2.has(e.key)) syncExerciseToSupabase(e); });
       } catch (err) {
         console.error('Supabase sync error:', err);
+      } finally {
+        syncInProgress = false;
       }
     }
 
