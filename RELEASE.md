@@ -1,5 +1,19 @@
 # Release Notes
 
+## [2026-06-17]
+
+### Bug Fixes
+- **Fix draft session banner persisting after finishing a resumed session** (PR #fix-session-bugs)
+  - `resumeSession()` now clears `partialSession` immediately — so after resuming and finishing, the home screen banner correctly disappears. Previously it would still show the completed session as "in progress", and tapping Discard would permanently delete the already-finished workout.
+- **Confirm before discarding a draft when starting a new session** (same PR)
+  - `startNewSession()` and `startRetroSession()` previously deleted any paused draft without asking. Now they show a confirm dialog so a paused morning workout can't be lost by accidentally tapping "+ New Session" in the evening.
+- **Fix `startRetroSession` orphaning draft data** (same PR)
+  - Was only clearing the `partialSession` ref without deleting the underlying localStorage/Supabase record. The draft would silently re-appear after a page reload. Now deletes properly (same as `startNewSession`).
+- **Prevent duplicate Supabase sync on startup** (same PR)
+  - `getSession()` and `onAuthStateChange` (INITIAL_SESSION) can both fire on load, triggering two concurrent `loadFromSupabase()` calls. A `syncInProgress` guard now prevents the second from running, eliminating the double-history duplication risk on fresh installs.
+
+---
+
 ## [2026-06-03]
 
 ### Bug Fixes
