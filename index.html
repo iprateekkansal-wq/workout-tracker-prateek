@@ -79,7 +79,9 @@
     .hero-callout-text small { display:block; color:var(--text2); font-size:12px; margin-top:1px; }
 
     /* Session block UI */
-    .session-screen { background:var(--bg); }
+    .screen.session-screen { background:var(--bg); display:flex; flex-direction:column; overflow:hidden; padding-bottom:0; }
+    .session-scroll { flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding-bottom:8px; }
+    .session-finish-bar { padding:8px 16px calc(8px + env(safe-area-inset-bottom)); background:var(--bg); border-top:1px solid var(--border); flex-shrink:0; }
     .session-progress { position:sticky; top:0; background:var(--bg); padding:50px 16px 10px; z-index:20; }
     .session-progress-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; }
     .session-progress-fill { height:100%; background:var(--orange); transition:width 0.3s ease; }
@@ -217,6 +219,7 @@
     .badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px; margin-left:6px; }
     .badge-partial { background:rgba(255,149,0,0.18); color:var(--orange); }
     .badge-complete { background:rgba(48,209,88,0.18); color:var(--green); }
+    .badge-day { background:rgba(100,210,255,0.15); color:var(--teal); }
 
     /* Exercise chart container */
     .chart-wrap { background:var(--card); border-radius:14px; padding:14px; height:220px; position:relative; }
@@ -364,61 +367,65 @@
 
   <!-- ========= SESSION ========= -->
   <div v-if="screen==='session' && activeSession" class="screen no-nav session-screen">
-    <div class="session-progress">
-      <div class="session-progress-text">
-        <button class="back-btn" @click="cancelOrPauseSession">‹ Home</button>
-        <span class="left" style="font-size:13px;">{{ activeSession.name || 'Workout' }}</span>
-        <button @click="showExercisePicker=true" style="color:var(--blue);font-size:15px;font-weight:600;background:none;border:none;cursor:pointer;min-width:60px;text-align:right;">+ Add</button>
+    <div class="session-scroll">
+      <div class="session-progress">
+        <div class="session-progress-text">
+          <button class="back-btn" @click="cancelOrPauseSession">‹ Home</button>
+          <span class="left" style="font-size:13px;">{{ activeSession.name || 'Workout' }}</span>
+          <button @click="showExercisePicker=true" style="color:var(--blue);font-size:15px;font-weight:600;background:none;border:none;cursor:pointer;min-width:60px;text-align:right;">+ Add</button>
+        </div>
+        <div class="session-progress-bar"><div class="session-progress-fill" :style="{width: sessionProgressPct + '%'}"></div></div>
       </div>
-      <div class="session-progress-bar"><div class="session-progress-fill" :style="{width: sessionProgressPct + '%'}"></div></div>
+
+      <div style="padding-top:8px;">
+
+        <div v-if="!activeSession.blocks.length" class="empty" style="padding:40px 20px;">
+          <div class="empty-icon">🏋️</div>
+          <div class="empty-msg">Tap <strong style="color:var(--blue);">+ Add</strong> above to add your first exercise</div>
+          <button @click="finishAsWorkoutDay" style="margin-top:20px;background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;">Log workout day without exercises</button>
+        </div>
+
+        <div v-for="(block,bi) in activeSession.blocks" :key="bi" class="block" :class="{done:block.done}"
+             @click="editBlock(bi)" style="cursor:pointer;">
+
+          <!-- EXERCISE (compact) -->
+          <template v-if="block.type==='exercise'">
+            <div class="block-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;">
+              <div style="flex:1;min-width:0;">
+                <div class="block-name">{{ exerciseName(block.exercise_key) }}</div>
+                <div class="block-sub" v-if="block.done">
+                  {{ block.sets.filter(s=>s.done).map(s=>(s.weight!=null?s.weight+'kg×':'')+s.reps).join(' · ') }}
+                </div>
+                <div class="block-sub" v-else>{{ block.sets.length }} sets · tap to log</div>
+              </div>
+              <button @click.stop="block.done ? confirmRemoveBlock(bi) : removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
+            </div>
+          </template>
+
+          <!-- CARDIO (compact) -->
+          <template v-else-if="block.type==='cardio'">
+            <div class="block-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;">
+              <div style="flex:1;">
+                <div class="block-name">🚶 {{ exerciseName(block.exercise_key) }}</div>
+                <div class="block-sub" v-if="block.done">{{ block.actualMinutes }}min{{ block.speed ? ' · ' + block.speed + 'km/h' : '' }}</div>
+                <div class="block-sub" v-else>Tap to log</div>
+              </div>
+              <button @click.stop="block.done ? confirmRemoveBlock(bi) : removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
+            </div>
+          </template>
+
+        </div>
+
+        <div style="padding:8px 16px 16px;">
+          <button class="btn btn-secondary" @click="showExercisePicker=true">+ Add Exercise</button>
+        </div>
+      </div>
     </div>
 
-    <div style="padding-top:8px;">
-
-      <div v-if="!activeSession.blocks.length" class="empty" style="padding:40px 20px;">
-        <div class="empty-icon">🏋️</div>
-        <div class="empty-msg">Tap <strong style="color:var(--blue);">+ Add</strong> above to add your first exercise</div>
-      </div>
-
-      <div v-for="(block,bi) in activeSession.blocks" :key="bi" class="block" :class="{done:block.done}"
-           @click="editBlock(bi)" style="cursor:pointer;">
-
-        <!-- EXERCISE (compact) -->
-        <template v-if="block.type==='exercise'">
-          <div class="block-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;">
-            <div style="flex:1;min-width:0;">
-              <div class="block-name">{{ exerciseName(block.exercise_key) }}</div>
-              <div class="block-sub" v-if="block.done">
-                {{ block.sets.filter(s=>s.done).map(s=>(s.weight!=null?s.weight+'kg×':'')+s.reps).join(' · ') }}
-              </div>
-              <div class="block-sub" v-else>{{ block.sets.length }} sets · tap to log</div>
-            </div>
-            <button @click.stop="block.done ? confirmRemoveBlock(bi) : removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
-          </div>
-        </template>
-
-        <!-- CARDIO (compact) -->
-        <template v-else-if="block.type==='cardio'">
-          <div class="block-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;">
-            <div style="flex:1;">
-              <div class="block-name">🚶 {{ exerciseName(block.exercise_key) }}</div>
-              <div class="block-sub" v-if="block.done">{{ block.actualMinutes }}min{{ block.speed ? ' · ' + block.speed + 'km/h' : '' }}</div>
-              <div class="block-sub" v-else>Tap to log</div>
-            </div>
-            <button @click.stop="block.done ? confirmRemoveBlock(bi) : removeBlock(bi)" style="background:none;border:none;color:var(--text3);font-size:22px;line-height:1;cursor:pointer;padding:0 0 0 12px;">×</button>
-          </div>
-        </template>
-
-      </div>
-
-      <div style="padding:8px 16px 4px;">
-        <button class="btn btn-secondary" @click="showExercisePicker=true">+ Add Exercise</button>
-      </div>
-      <div style="padding:8px 16px 30px;">
-        <button class="btn btn-primary" @click="finishSession" :disabled="!sessionCanFinish">
-          {{ allBlocksDone ? 'Finish Session 🎉' : 'Finish Early' }}
-        </button>
-      </div>
+    <div class="session-finish-bar">
+      <button class="btn btn-primary" @click="finishSession" :disabled="!sessionCanFinish">
+        {{ allBlocksDone ? 'Finish Session 🎉' : 'Finish Early' }}
+      </button>
     </div>
   </div>
 
@@ -538,7 +545,7 @@
             <div class="mo">{{ monthOf(s.date) }}</div>
           </div>
           <div class="history-info">
-            <div class="history-title">{{ s.name || 'Session' }}<span v-if="s.isPartial" class="badge badge-partial">Partial</span></div>
+            <div class="history-title">{{ s.name || 'Session' }}<span v-if="!s.blocks.length" class="badge badge-day">Day</span><span v-else-if="s.isPartial" class="badge badge-partial">Partial</span></div>
             <div class="history-sub">{{ historyExerciseSummary(s) }}</div>
           </div>
           <div class="chevron">›</div>
@@ -800,8 +807,8 @@
     <div class="celebrate-sub">{{ celebrationData.sub }}</div>
     <div class="celebrate-stats">
       <div class="celebrate-stat-row"><span class="lbl">Session</span><span class="val">{{ celebrationData.sessionName }}</span></div>
-      <div class="celebrate-stat-row"><span class="lbl">Exercises completed</span><span class="val">{{ celebrationData.exDone }}/{{ celebrationData.exTotal }}</span></div>
-      <div class="celebrate-stat-row"><span class="lbl">Total sets</span><span class="val">{{ celebrationData.totalSets }}</span></div>
+      <div v-if="celebrationData.exTotal > 0" class="celebrate-stat-row"><span class="lbl">Exercises completed</span><span class="val">{{ celebrationData.exDone }}/{{ celebrationData.exTotal }}</span></div>
+      <div v-if="celebrationData.totalSets > 0" class="celebrate-stat-row"><span class="lbl">Total sets</span><span class="val">{{ celebrationData.totalSets }}</span></div>
       <div v-if="celebrationData.totalVolume" class="celebrate-stat-row"><span class="lbl">Total volume</span><span class="val">{{ celebrationData.totalVolume }} kg</span></div>
       <div class="celebrate-stat-row"><span class="lbl">Streak</span><span class="val">🔥 {{ streak }} days</span></div>
     </div>
@@ -1294,6 +1301,7 @@ createApp({
       return s.blocks.filter(b => b.type === 'exercise' && b.sets && b.sets.some(x => x.done)).length;
     }
     function historyExerciseSummary(s) {
+      if (!s.blocks.length) return 'Workout day · no exercises logged';
       const exNames = s.blocks.filter(b => b.type === 'exercise' && b.sets.some(x => x.done)).map(b => exerciseName(b.exercise_key));
       return exNames.length ? exNames.slice(0, 3).join(', ') + (exNames.length > 3 ? '…' : '') : '—';
     }
@@ -1695,22 +1703,37 @@ createApp({
       s.isPartial = !(allExLogged && allBlocksMarked);
       persistSession();
 
-      const totalSets = s.blocks.reduce((sum, b) => sum + (b.type === 'exercise' ? b.sets.filter(x => x.done).length : 0), 0);
-      const totalVolume = s.blocks.reduce((sum, b) => {
-        if (b.type !== 'exercise') return sum;
-        return sum + b.sets.filter(x => x.done && x.weight != null).reduce((vs, x) => vs + (x.weight * x.reps), 0);
-      }, 0);
-      celebrationData.value = {
-        icon: s.isPartial ? '👏' : '🏆',
-        title: s.isPartial ? 'Session Logged' : 'Session Crushed!',
-        sub: s.isPartial ? 'Partial but counted. Every rep matters.' : 'All exercises complete. Great work.',
-        sessionName: s.name || 'Workout',
-        exDone: exBlocks.filter(b => b.sets.some(x => x.done)).length,
-        exTotal: exBlocks.length,
-        totalSets,
-        totalVolume: totalVolume > 0 ? totalVolume.toFixed(0) : null
-      };
+      if (!s.blocks.length) {
+        celebrationData.value = {
+          icon: '✅', title: 'Day Logged',
+          sub: 'Counts as a workout day. No details tracked.',
+          sessionName: s.name || 'Workout day',
+          exDone: 0, exTotal: 0, totalSets: 0, totalVolume: null
+        };
+      } else {
+        const totalSets = s.blocks.reduce((sum, b) => sum + (b.type === 'exercise' ? b.sets.filter(x => x.done).length : 0), 0);
+        const totalVolume = s.blocks.reduce((sum, b) => {
+          if (b.type !== 'exercise') return sum;
+          return sum + b.sets.filter(x => x.done && x.weight != null).reduce((vs, x) => vs + (x.weight * x.reps), 0);
+        }, 0);
+        celebrationData.value = {
+          icon: s.isPartial ? '👏' : '🏆',
+          title: s.isPartial ? 'Session Logged' : 'Session Crushed!',
+          sub: s.isPartial ? 'Partial but counted. Every rep matters.' : 'All exercises complete. Great work.',
+          sessionName: s.name || 'Workout',
+          exDone: exBlocks.filter(b => b.sets.some(x => x.done)).length,
+          exTotal: exBlocks.length,
+          totalSets,
+          totalVolume: totalVolume > 0 ? totalVolume.toFixed(0) : null
+        };
+      }
       showCelebration.value = true;
+    }
+
+    function finishAsWorkoutDay() {
+      if (!activeSession.value) return;
+      activeSession.value.name = 'Workout day';
+      finishSession();
     }
 
     function dismissCelebration() {
@@ -1947,7 +1970,7 @@ createApp({
       addExerciseToSession, isInSession, removeBlock, confirmRemoveBlock, createExercise, getRecentSessionsForExercise,
       loggingBlock, showChartSheet, chartSheetExercise, chartSheetRecentSessions, loggingChart, openChartSheet, closeChartSheet,
       addSet, removeSet, markBlockDone, editBlock, persistSession,
-      cancelOrPauseSession, finishSession, dismissCelebration, confettiStyle,
+      cancelOrPauseSession, finishSession, finishAsWorkoutDay, dismissCelebration, confettiStyle,
       deleteDetailSession, reopenSession, exportData, triggerImport, importData,
       exerciseChart, importFileInput,
       currentUser, authLoading, authEmail, authCode, authSending, authSent,
