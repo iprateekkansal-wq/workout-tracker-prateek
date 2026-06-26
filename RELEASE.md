@@ -1,5 +1,15 @@
 # Release Notes
 
+## [2026-06-26]
+
+### Improvements
+- **Sticky Finish Session bar**
+  - The Finish Session button now lives in a fixed bar pinned to the bottom of the session screen, always visible regardless of how many exercises are in the session. It no longer sits directly below + Add Exercise — the two actions are visually separated.
+- **Log workout day without exercises**
+  - On an empty session screen, a "Log workout day without exercises" link lets you count a day as a workout without tracking exercise details (e.g. acclimatisation sessions after a vacation). The session is saved as "Workout day", shows a teal `Day` badge in History, and does not affect progressive overload or muscle-group stats.
+
+---
+
 ## [2026-06-17]
 
 ### Bug Fixes
