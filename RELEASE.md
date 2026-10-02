@@ -1,5 +1,24 @@
 # Release Notes
 
+## [2026-10-02]
+
+### Bug Fixes
+- **Keep-alive no longer switches itself off**
+  - GitHub automatically disables scheduled workflows in public repos after 60 days with no repository activity. With no code changes since 26-Jun, the weekly Supabase ping was disabled after its 31-Aug run. Supabase then paused the project, and cloud sync and sign-in stopped working.
+  - Each weekly run now also commits a timestamp to `.github/keepalive`. That counts as repository activity, so the schedule stays enabled indefinitely. The heartbeat runs even if the ping fails.
+  - A failed ping fails the run, so GitHub emails a failure notice instead of the outage going unnoticed.
+  - Side effect: Vercel redeploys once a week from the heartbeat commit. Harmless — `index.html` is unchanged.
+- **App no longer locks you out when the cloud is unreachable**
+  - When not signed in, the sign-in screen covered the whole app with no way past it. If Supabase was paused or down, the sign-in code couldn't be sent, so the app was unusable even though every workout was stored on the phone.
+  - The sign-in screen now has **Use without signing in**. Workouts save on the phone as usual and upload automatically the next time you sign in (existing two-way sync on login).
+  - Reports → Cloud Sync shows a **Sign In** button when not signed in.
+  - If the Supabase library fails to load at all, the app now opens in local-only mode instead of showing a sign-in screen that can't work.
+
+### Migration
+- Re-enable the "Supabase Keep-Alive" workflow in the Actions tab — GitHub disabled it.
+
+---
+
 ## [2026-06-26]
 
 ### Improvements

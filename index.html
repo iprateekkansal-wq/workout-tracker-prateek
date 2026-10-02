@@ -254,7 +254,7 @@
       <div style="color:var(--text2);font-size:14px;">Loading…</div>
     </div>
   </div>
-  <div v-else-if="!currentUser" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px;">
+  <div v-else-if="!currentUser && !offlineMode" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px;">
     <div style="width:100%;max-width:340px;">
       <div style="text-align:center;margin-bottom:40px;">
         <div style="font-size:56px;margin-bottom:12px;">🏋️</div>
@@ -279,6 +279,8 @@
         </button>
         <button class="btn btn-secondary" @click="authSent=false; authCode=''" style="width:100%;margin-top:10px;">Use different email</button>
       </div>
+      <button @click="offlineMode = true" style="width:100%;margin-top:24px;padding:10px;background:none;border:none;color:var(--text2);font-size:14px;">Use without signing in</button>
+      <div style="text-align:center;color:var(--text2);font-size:12px;margin-top:4px;">Workouts save on this phone and upload next time you sign in.</div>
     </div>
   </div>
 
@@ -671,6 +673,7 @@
             <div class="row-detail">{{ currentUser ? currentUser.email : 'Data stored locally only' }}</div>
           </div>
           <button v-if="currentUser" class="btn-sm" @click="signOut" style="color:var(--red);background:rgba(255,69,58,0.15);border-radius:8px;padding:6px 12px;font-size:13px;">Sign Out</button>
+          <button v-else class="btn-sm" @click="offlineMode = false" style="color:var(--blue);background:rgba(10,132,255,0.15);border-radius:8px;padding:6px 12px;font-size:13px;">Sign In</button>
         </div>
       </div>
 
@@ -983,6 +986,7 @@ createApp({
     const authCode = ref('');
     const authSending = ref(false);
     const authSent = ref(false);
+    const offlineMode = ref(false);   // user chose to use the app without signing in (e.g. cloud unreachable)
 
     const activeSession = ref(null);
     const activeBlockIndex = ref(0);
@@ -1022,7 +1026,7 @@ createApp({
       const partial = sessions.value.find(s => s.isPartial && !s.completed_at && s.inProgress);
       if (partial) partialSession.value = partial;
 
-      if (!sb) { authLoading.value = false; return; }
+      if (!sb) { offlineMode.value = true; authLoading.value = false; return; }
 
       /* Resolve auth immediately from cookie cache — no network wait */
       sb.auth.getSession().then(({ data: { session } }) => {
@@ -1973,7 +1977,7 @@ createApp({
       cancelOrPauseSession, finishSession, finishAsWorkoutDay, dismissCelebration, confettiStyle,
       deleteDetailSession, reopenSession, exportData, triggerImport, importData,
       exerciseChart, importFileInput,
-      currentUser, authLoading, authEmail, authCode, authSending, authSent,
+      currentUser, authLoading, authEmail, authCode, authSending, authSent, offlineMode,
       sendMagicLink, verifyCode, signOut
     };
   }

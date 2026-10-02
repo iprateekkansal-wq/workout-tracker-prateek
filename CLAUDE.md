@@ -122,11 +122,14 @@ The magic link redirects to the app URL. Supabase dashboard → Authentication �
 
 - **On login**: two-way sync — pulls remote data not in localStorage, pushes local data not in Supabase
 - **On every write**: `persistSession()`, `createExercise()`, `deleteDetailSession()`, `importData()` all fire-and-forget sync to Supabase
-- **If Supabase CDN fails to load**: `sb` is null, `authLoading` is immediately set to false, app works in local-only mode with no auth screen
+- **If Supabase CDN fails to load**: `sb` is null, `offlineMode` and `authLoading` are set immediately, app works in local-only mode with no auth screen
+- **Use without signing in**: the auth overlay has a "Use without signing in" button that sets `offlineMode`. Local logging works as normal; `syncSessionToSupabase` no-ops without a user, and the next sign-in's two-way sync uploads anything missing. Reports → Cloud Sync has a Sign In button to bring the overlay back
 
 ### Keep-alive
 
-`.github/workflows/keep-alive.yml` — GitHub Actions cron, every Monday 9am UTC. Pings `health_check` table with the anon key to prevent Supabase free tier pausing after 7 days of inactivity. Data is never deleted by pausing — project just needs ~30s to wake on next request.
+`.github/workflows/keep-alive.yml` — GitHub Actions cron, every Monday 9am UTC. Pings `health_check` table with the anon key to prevent Supabase free tier pausing after 7 days of inactivity. **A paused project does NOT wake on the next request** — its address stops resolving until someone clicks Restore in the Supabase dashboard (this happened Sep 2026 and went unnoticed for weeks).
+
+GitHub disables scheduled workflows in public repos after 60 days with no repository activity — which, for an app built to be left alone, is guaranteed. So each run also commits a timestamp to `.github/keepalive` (that commit is the activity). The heartbeat runs even if the ping fails; a failed ping turns the run red and GitHub emails a failure notice.
 
 **GitHub Secrets required**:
 - `SUPABASE_URL`: `https://xguorgktfqmnpfrsdesh.supabase.co`
@@ -148,7 +151,7 @@ Navigation uses a `screen` ref (string) with `screenHistory` stack for back navi
 | `library` | Full exercise list, filterable by muscle group |
 | `exercise-detail` | Progression chart + recent sessions for one exercise |
 
-Auth overlay (`authLoading` / `!currentUser`) sits above all screens as `position:fixed`.
+Auth overlay (`authLoading` / `!currentUser && !offlineMode`) sits above all screens as `position:fixed`. It must always offer "Use without signing in" — the app is offline-first and must never be unusable because the cloud is down.
 
 Bottom nav tabs: Home, History, Reports, Library.
 
