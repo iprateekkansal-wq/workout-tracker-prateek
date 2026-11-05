@@ -1,5 +1,19 @@
 # Release Notes
 
+## [2026-11-05]
+
+### Bug Fixes
+- **Keep-alive now pings Supabase often enough**
+  - The Supabase project paused again in early Nov 2026, 3 days after a successful weekly ping. Supabase pauses free projects with too few database queries over a week, and says "a few user requests to the database each day" is usually enough. One a week was too few.
+  - The ping now runs 4 times a day, every day (01:17, 07:17, 13:17, 19:17 UTC).
+  - A failed ping is retried 3 times before the run goes red, so a single network blip doesn't send a failure email.
+  - The heartbeat commit still happens, but at most once every 6 days, so the repo history and Vercel deploys stay at about one a week.
+
+### Migration
+- Resume the paused project once from the Supabase dashboard. The new schedule keeps it awake from then on.
+
+---
+
 ## [2026-10-02]
 
 ### Bug Fixes

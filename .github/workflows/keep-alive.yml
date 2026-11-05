@@ -1,7 +1,8 @@
 name: Supabase Keep-Alive
 on:
   schedule:
-    - cron: '0 9 * * 1'  # Every Monday 9am UTC
+    # 4 times a day, every day. Minute 17, because GitHub delays runs at the top of the hour.
+    - cron: '17 1,7,13,19 * * *'
   workflow_dispatch:
 
 # Needed so the heartbeat step can commit to the repo.
@@ -12,16 +13,21 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      # Keeps the free Supabase project from pausing (it pauses after 7 days with no traffic).
-      # If this fails, the run goes red and GitHub emails a failure notice.
+      # Supabase pauses free projects that get too few database queries over a week.
+      # Its docs say "a few user requests to the database each day" is usually enough.
+      # One ping a week was not: the project paused 3 days after a successful ping (Nov 2026).
+      # A failed ping is retried 3 times. If it still fails, the run goes red and GitHub
+      # emails a failure notice.
       - name: Ping Supabase
         run: |
-          curl -sf "${{ secrets.SUPABASE_URL }}/rest/v1/health_check?select=updated_at" \
+          curl -sf --retry 3 --retry-delay 30 --retry-all-errors --max-time 30 \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/health_check?select=updated_at" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
 
       # GitHub disables scheduled workflows in public repos after 60 days with no repo
       # activity. This commit is that activity, so the schedule never switches itself off.
+      # It commits at most once every 6 days, so 4 runs a day don't flood the history.
       # Runs even if the ping failed.
       - uses: actions/checkout@v4
         if: always()
@@ -29,6 +35,12 @@ jobs:
       - name: Record heartbeat
         if: always()
         run: |
+          last=$(cat .github/keepalive 2>/dev/null || echo 1970-01-01T00:00:00Z)
+          age=$(( $(date -u +%s) - $(date -u -d "$last" +%s) ))
+          if [ "$age" -lt 518400 ]; then
+            echo "Last heartbeat $last is under 6 days old. Skipping the commit."
+            exit 0
+          fi
           date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
